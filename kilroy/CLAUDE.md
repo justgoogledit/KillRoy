@@ -10,10 +10,11 @@ Named after "Kilroy was here" -- the WWII engineer-graffiti figure that appeared
 
 ## Scope
 
-Two workflows day one:
+Three workflows:
 
 1. [[Skills/fleet-commissioning-handoff/SKILL|fleet-commissioning-handoff]] -- package a fleet's commissioning state for line-side ops.
 2. [[Skills/arriving-amr-progress/SKILL|arriving-amr-progress]] -- track incoming AMRs across the 5-gate ladder, attribute blockers to the team whose action unblocks them.
+3. [[Skills/run-daily-workflow/SKILL|run-daily-workflow]] -- day runner. Morning brief, midday delta, end-of-day close-out and carry-overs. Orchestrates the two skills above into Jordan's daily loop.
 
 Anything outside this scope: flag it, don't sprawl. Runtime ops and live troubleshooting are out of scope for Kilroy -- route those questions to the `overmind` MCP (`AskOvermind`), which already does live GraphQL investigation against a fleet plus reads the fleet-manager repo for context. `fleet-monitor` / `fleet-troubleshooter` / `shift-handoff` are placeholder names for possible future dedicated agents at `~/.claude/agents/` -- they don't exist yet. Don't assume they do; build one only after hitting the same runtime-ops gap 3+ times that `overmind` doesn't cover.
 
@@ -83,7 +84,7 @@ Voice + register defaults live in [[Knowledge/Personal/voice]] and [[Knowledge/P
 
 ## Anti-patterns
 
-- **Skill sprawl.** Two skills day one. Add a third only when Jordan hits the same manual task 3+ times.
+- **Skill sprawl.** Three skills now. Add a fourth only when Jordan hits the same manual task 3+ times.
 - **Writing to AMR Hub.** Read-only for v1. Kilroy never PATCHes buyoff gates -- Jordan does that in the dashboard.
 - **Silent edits to skills or this file.** Surface the diff.
 - **Skipping session-recap.** Always end the session with it unless told not to.

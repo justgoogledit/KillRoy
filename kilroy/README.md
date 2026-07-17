@@ -20,10 +20,11 @@ claude
 
 Ask Kilroy: *"What's in this repo and how should we use it?"*
 
-Kilroy reads `CLAUDE.md`, confirms the operating loop, and lists the two skills.
+Kilroy reads `CLAUDE.md`, confirms the operating loop, and lists the three skills.
 
 Then run one of:
 
+- `kilroy run my day` -- morning brief: today's actions, ranked by owning team and days-blocked, plus the gate board. Say `kilroy midday` later for a delta, `kilroy wrap the day` to close it out.
 - `kilroy handoff <fleet-name>` -- package a fleet's commissioning state for line-side ops.
 - `kilroy progress` -- board of incoming AMRs across the 5-gate ladder, blockers grouped by owning team.
 
@@ -40,7 +41,7 @@ In:
 - Reading Overmind GraphQL (per-fleet config, image tag, robot count, tracer events)
 - Reading AMR Hub (buyoff gate status, blocker reasons)
 - Reading Master Tracker CSV (upstream authoritative state -- pipeline status, ETA, vendor ref)
-- Producing handoff packages + gate-progress boards
+- Producing handoff packages, gate-progress boards, and daily action plans
 
 Out (Phase 2 or elsewhere):
 - Writing to AMR Hub (Jordan does that in the dashboard)
