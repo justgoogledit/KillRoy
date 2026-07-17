@@ -1,7 +1,11 @@
-# Local reference clones -- not part of Kilroy's tracked tree.
+# Kilroy -- keep secrets and machine-local files out of the repo
+.env
+.env.local
+.claude/settings.local.json
+.DS_Store
+Thumbs.db
+
+# Local reference clone -- not part of Kilroy's tracked tree.
 # skills/ is mattpocock/skills, pulled in for skill-authoring reference.
 # It has its own git history; Kilroy has no cross-repo skill imports (see design doc).
 skills/
-
-# Claude Code local settings -- per-developer permission overrides, not shared.
-.claude/settings.local.json

@@ -2,7 +2,7 @@
 # Kilroy connector pre-check, runs on every Claude Code session start in this repo.
 #
 # This is a fast, deterministic reachability probe -- not a replacement for the
-# check-connectors skill (kilroy/Skills/check-connectors/SKILL.md). That skill is
+# check-connectors skill (Skills/check-connectors/SKILL.md). That skill is
 # still the authoritative gate run by an agent before any real data-pulling skill
 # (arriving-amr-progress, fleet-commissioning-handoff, run-daily-workflow). This
 # hook just surfaces a heads-up the moment a session opens, so a bad .env doesn't
@@ -14,15 +14,14 @@
 
 set -uo pipefail
 
-KILROY_DIR="$CLAUDE_PROJECT_DIR/kilroy"
-ENV_FILE="$KILROY_DIR/.env"
+ENV_FILE="$CLAUDE_PROJECT_DIR/.env"
 PROBE_TIMEOUT=3
 
 echo "=== Kilroy connector check (session start) ==="
 
 if [ ! -f "$ENV_FILE" ]; then
   echo "FAIL: .env not found at $ENV_FILE"
-  echo "  -> cp kilroy/.env.example kilroy/.env, then fill it in."
+  echo "  -> cp .env.example .env, then fill it in."
   echo "=== end connector check ==="
   exit 0
 fi

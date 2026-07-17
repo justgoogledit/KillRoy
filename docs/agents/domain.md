@@ -2,13 +2,11 @@
 
 How the engineering skills should consume this repo's domain documentation when exploring the codebase.
 
-**Note on this repo's layout:** the true git root is one level above `kilroy/` (a stray top-level `README.md` sits there -- see the open thread in `Knowledge/Lessons/2026-07-17-session-start-hook.md`). Everywhere below, "repo root" means `kilroy/`, not the true git root -- that's where `CLAUDE.md` and the rest of Kilroy's own three-folder framework (`Skills/`, `Knowledge/`, `Projects/`) already live, and where this setup skill's own config landed.
-
 ## Before exploring, read these
 
-- **`CONTEXT.md`** at `kilroy/`, or
-- **`CONTEXT-MAP.md`** at `kilroy/` if it exists -- it points at one `CONTEXT.md` per context. Read each one relevant to the topic.
-- **`docs/adr/`** (i.e. `kilroy/docs/adr/`) -- read ADRs that touch the area you're about to work in.
+- **`CONTEXT.md`** at the repo root, or
+- **`CONTEXT-MAP.md`** at the repo root if it exists -- it points at one `CONTEXT.md` per context. Read each one relevant to the topic.
+- **`docs/adr/`** -- read ADRs that touch the area you're about to work in.
 
 If any of these files don't exist, **proceed silently**. Don't flag their absence; don't suggest creating them upfront. The `/domain-modeling` skill (reached via `/grill-with-docs` and `/improve-codebase-architecture`) creates them lazily when terms or decisions actually get resolved.
 
@@ -17,7 +15,7 @@ If any of these files don't exist, **proceed silently**. Don't flag their absenc
 Single-context repo (this one -- no monorepo signals found: no `pnpm-workspace.yaml`, no `package.json` workspaces field, no populated `packages/*`):
 
 ```
-kilroy/
+/
 ├── CLAUDE.md
 ├── CONTEXT.md              (created lazily by /domain-modeling)
 ├── docs/

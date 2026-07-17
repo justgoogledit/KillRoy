@@ -53,7 +53,7 @@ Default 5 canonical roles (`needs-triage`, `needs-info`, `ready-for-agent`, `rea
 
 ### Domain docs
 
-Single-context. `CONTEXT.md` and `docs/adr/` created lazily at `kilroy/` (not the true git root -- see the note in `docs/agents/domain.md`). See `docs/agents/domain.md`.
+Single-context. `CONTEXT.md` and `docs/adr/` created lazily at the repo root. See `docs/agents/domain.md`.
 
 ## Three-folder framework
 

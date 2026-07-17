@@ -1,6 +1,0 @@
-# Kilroy -- keep secrets and machine-local files out of the repo
-.env
-.env.local
-.claude/settings.local.json
-.DS_Store
-Thumbs.db
