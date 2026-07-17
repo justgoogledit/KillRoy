@@ -45,7 +45,7 @@ General-purpose engineering skills from [mattpocock/skills](https://github.com/m
 
 ### Issue tracker
 
-GitHub (`justgoogledit/KillRoy`), via the `gh` CLI. See `docs/agents/issue-tracker.md`.
+GitHub (`justgoogledit/KillRoy`), via the `gh` CLI. See `docs/agents/issue-tracker.md`. **Stale after the enterprise-account clone** -- this is the personal-account repo used to build the scaffolding; the real repo will have a different owner/name once cloned over. `gh` auto-detects from `git remote -v` so nothing breaks, but update this literal string (and the one in `issue-tracker.md`) in one pass once that clone exists.
 
 ### Triage labels
 

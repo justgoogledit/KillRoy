@@ -24,4 +24,5 @@ tags: [lesson, tooling, mattpocock-skills]
 
 ## Open threads
 
-- [ ] None new -- this closes cleanly. The pre-existing repo-layout mismatch (true git root vs. `kilroy/`) is still open, tracked in [[Knowledge/Lessons/2026-07-17-session-start-hook]]; this session's config choices work around it consistently rather than resolving it.
+- [ ] The pre-existing repo-layout mismatch (true git root vs. `kilroy/`) is still open, tracked in [[Knowledge/Lessons/2026-07-17-session-start-hook]]; this session's config choices work around it consistently rather than resolving it.
+- [ ] `justgoogledit/KillRoy` is the personal-account repo used to build this scaffolding, not the final home. Once cloned into Jordan's enterprise account, `docs/agents/issue-tracker.md` and `CLAUDE.md`'s `## Agent skills` section both have the literal string `justgoogledit/KillRoy` that needs a one-pass update to the real owner/repo. Both files already flag this inline. `gh` itself doesn't need any change (it infers from `git remote -v`).

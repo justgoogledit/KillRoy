@@ -3,6 +3,14 @@
 Issues and PRDs for this repo live as GitHub issues on `justgoogledit/KillRoy`. Use the `gh` CLI
 for all operations.
 
+> **Repo will change.** `justgoogledit/KillRoy` is the personal-account repo used to build this
+> scaffolding. Once the build is finished here, this repo gets cloned into Jordan's enterprise
+> account, and the real working repo will live there under a different owner/name. Everything
+> below still applies as-is -- `gh` infers the repo from `git remote -v`, so no edits are needed
+> here once the clone happens. Only the literal string `justgoogledit/KillRoy` above (and in
+> `CLAUDE.md`'s `## Agent skills` section) is stale after the move; update both in one pass once
+> the enterprise clone exists and its remote is known.
+
 ## Conventions
 
 - **Create an issue**: `gh issue create --title "..." --body "..."`. Use a heredoc for multi-line bodies.
