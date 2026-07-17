@@ -21,3 +21,7 @@ Built `Knowledge/Sources/fixtures/` (synthetic AMR Hub response + deliberately-b
 ## [2026-07-17] lesson | execution-test-with-fixtures
 
 See [[Knowledge/Lessons/2026-07-17-execution-test-with-fixtures]] for mistakes/corrections and open threads.
+
+## [2026-07-17] setup | check-connectors skill + proactive trigger attempt
+
+Added `check-connectors` (foundational): verifies `.env` and all three data sources before any workflow skill pulls real data, wired as the first sub-step of `run-daily-workflow`'s morning phase. Attempted to wire a real recurring proactive trigger (Routine, weekdays 07:06, fresh session, push notification) so the morning brief fires itself -- the `create_trigger` call returned an MCP permission-approval error and is unconfirmed as of this entry. Details in [[Knowledge/Lessons/2026-07-17-proactive-trigger]].

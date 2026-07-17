@@ -22,6 +22,7 @@ The day runner. Orchestrates Kilroy's existing skills plus a task list into one 
 
 ## Applies
 
+- [[Skills/check-connectors/SKILL|check-connectors]] -- run first, silently, before any data pull. A FAIL here stops the morning phase before it starts.
 - [[Skills/arriving-amr-progress/SKILL|arriving-amr-progress]] -- run end to end for the live gate board; the day file's blockers come from it.
 - [[Skills/fleet-commissioning-handoff/SKILL|fleet-commissioning-handoff]] -- referenced, never run automatically; the day file may recommend a handoff, Jordan triggers it.
 - [[Skills/session-recap/SKILL|session-recap]] -- run at close-out if anything reusable was learned.
@@ -33,6 +34,7 @@ The day runner. Orchestrates Kilroy's existing skills plus a task list into one 
 
 1. **Determine phase.** Morning (first run of the day / "start my day"), midday ("midday" / "anything change"), or close-out ("wrap the day"). If the day file `Projects/daily/<today>-daily.md` does not exist, phase is morning regardless of clock.
 2. **Morning brief.**
+   - Run [[Skills/check-connectors/SKILL|check-connectors]] first, silently. If it reports `NOT SAFE TO RUN A SKILL`, stop here -- write the day file's opening line as the connector-check failure report instead of a gate board, and skip straight to that. Do not attempt the AMR Hub pull below on a red check.
    - Run [[Skills/arriving-amr-progress/SKILL|arriving-amr-progress]] end to end (its own Verify included) to get the live gate board. If Jordan named a focus fleet, pass it through.
    - Scan `log.md` and `Knowledge/Lessons/*.md` "Open threads" for carry-overs from previous days, plus yesterday's day file "Carry-over" section if present.
    - Build today's action list: every blocker from the board becomes an action attributed to its owning team -- chase items for teams Jordan pushes (MFE, MFA Hardware), direct actions for Jordan's own side (MFA Controls / PC). Carry-overs come next. Rank by days-blocked descending; safety-gate (250/270) blockers first within a tie.
@@ -45,13 +47,15 @@ The day runner. Orchestrates Kilroy's existing skills plus a task list into one 
 
 Kilroy is local-first, so "proactive" means a scheduled morning run: Windows Task Scheduler or cron invoking `claude -p "kilroy run my day"` in the repo, or a Claude Code Routine where available. The schedule triggers the same skill; nothing else changes. Midday and close-out can be scheduled the same way, but start with morning-only until the brief proves useful -- same reasoning as the skill-sprawl anti-pattern.
 
+**In progress, 2026-07-17**, for the hosted Claude Code environment: a Routine (weekdays at 07:06, target time zone unconfirmed) is intended to fire into a fresh session that reads `CLAUDE.md`, runs `check-connectors` then this skill's morning phase, and sends a push notification with either the top action item or the connector-check failure. It writes the day file to disk but does not auto-commit or push it -- that stays a manual/interactive step so a bad automated run never lands on the shared branch unreviewed. See `Knowledge/Lessons/2026-07-17-proactive-trigger.md` for the full setup, the caveat that this environment currently can't reach any of the three real connectors (so every fire will hit the `check-connectors` FAIL path until `.env` points at reachable endpoints), and how to change the schedule or turn on auto-push later.
+
 ## Verify
 
 Before handing the day file back to Jordan:
 
 1. **Sum audit** (inherited from the progress board): every unit on the board appears in exactly one gate bucket, and the day file's blocker count equals the board's blocker count.
 2. **Action traceability**: every action item traces to a real blocker line, a real carry-over line in a prior day file or lesson, or an explicit Jordan request. No invented work.
-3. **Fail loud**: if AMR Hub or the Master Tracker CSV is unreachable, the day file says so at the top and the affected sections are marked unavailable -- never silently reuse yesterday's numbers as today's.
+3. **Fail loud**: if `check-connectors` reports a FAIL, or AMR Hub or the Master Tracker CSV is unreachable mid-run, the day file says so at the top and the affected sections are marked unavailable -- never silently reuse yesterday's numbers as today's.
 4. **Close-out conservation**: actions done + moved + still-open = actions opened that morning (plus any added midday). No action silently disappears.
 
 ## Output template

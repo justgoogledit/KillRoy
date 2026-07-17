@@ -20,11 +20,12 @@ claude
 
 Ask Kilroy: *"What's in this repo and how should we use it?"*
 
-Kilroy reads `CLAUDE.md`, confirms the operating loop, and lists the three skills.
+Kilroy reads `CLAUDE.md`, confirms the operating loop, and lists the skills.
 
 Then run one of:
 
-- `kilroy run my day` -- morning brief: today's actions, ranked by owning team and days-blocked, plus the gate board. Say `kilroy midday` later for a delta, `kilroy wrap the day` to close it out.
+- `kilroy check` -- verify `.env` and all three data sources are reachable. Also runs automatically at the start of `kilroy run my day`.
+- `kilroy run my day` -- morning brief: today's actions, ranked by owning team and days-blocked, plus the gate board. Say `kilroy midday` later for a delta, `kilroy wrap the day` to close it out. Runs proactively on a schedule once wired -- see [[Skills/run-daily-workflow/SKILL]].
 - `kilroy handoff <fleet-name>` -- package a fleet's commissioning state for line-side ops.
 - `kilroy progress` -- board of incoming AMRs across the 5-gate ladder, blockers grouped by owning team.
 
