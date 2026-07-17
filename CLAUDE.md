@@ -63,6 +63,15 @@ Inherited from the agentic-os starter-pack:
 - `Knowledge/` -- what Kilroy knows (voice, sources, lessons)
 - `Projects/` -- what Kilroy has produced (`handoffs/`, `progress/`, `daily/`)
 
+## Working in this repo
+
+No build, lint, or test tooling. This repo is prose and markdown -- `SKILL.md` files, `Knowledge/*.md`, generated `Projects/*.md` reports. Nothing to compile or run.
+
+- **Verification is per-skill, not a global test suite.** Every `Skills/*/SKILL.md` has its own `## Verify` section -- a checklist run after executing that skill (sum audits, fact-traceability checks, fail-loud confirmations). That's the closest thing to "tests" here.
+- **Dry-run a skill without live connectors** using `Knowledge/Sources/fixtures/` -- synthetic AMR Hub, Overmind, and Master Tracker CSV data, including a deliberately-broken response for exercising the fail-loud path. See its `README.md` for the exact invocation pattern.
+- **`.claude/hooks/session-start.sh`** runs a fast connector-reachability probe on every session start (registered in `.claude/settings.json`) -- a lightweight heads-up, not a replacement for the full `check-connectors` skill.
+- **Skill file shape:** every `SKILL.md` follows the same template -- frontmatter, When to use, Applies, Steps, Verify, Output template, Examples, Anti-patterns. See `Skills/skill-creator/SKILL.md` for the canonical version before adding or editing a skill.
+
 ## Plan mode is the default
 
 - Start every session in plan mode unless told otherwise.
