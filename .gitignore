@@ -1,0 +1,4 @@
+# Local reference clones -- not part of Kilroy's tracked tree.
+# skills/ is mattpocock/skills, pulled in for skill-authoring reference.
+# It has its own git history; Kilroy has no cross-repo skill imports (see design doc).
+skills/
