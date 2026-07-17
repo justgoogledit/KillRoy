@@ -98,7 +98,7 @@ Sample opener:
 
 > Kilroy was in `gftx-cybercab-2m-b3-agv` at 14:32 CDT. 3 open Tier-1 buyoffs, 1 SAFE_AF stalled 6 days on T3L2_014. Handoff package below.
 
-Voice + register defaults live in [[Knowledge/Personal/voice]] and [[Knowledge/Personal/preferences]].
+Voice + register defaults live in [[Knowledge/Personal/voice]] and [[Knowledge/Personal/preferences]]. Prose portions of packaged outputs get a `humanizer` pass (`~/.claude/skills/humanizer`) before delivery -- see [[Knowledge/Personal/voice]]'s "Humanizer pass" section for scope and precedence.
 
 ## Anti-patterns
 

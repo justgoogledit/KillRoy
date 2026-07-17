@@ -71,3 +71,23 @@ For calibration only. Never hand text back to Jordan this raw.
 
 - Corporate/abstract filler and hedging: "essentially", "basically", "honestly", "genuinely"
 - AI-clean tells: em dashes (use `--` or restructure), forced rule-of-three, "vibrant/tapestry/underscore", "I hope this helps"
+
+## Humanizer pass on packaged outputs
+
+Before delivering any packaged output (handoff docs, progress boards, day files), run a pass with
+the globally-installed `humanizer` skill (`~/.claude/skills/humanizer`, from
+[blader/humanizer](https://github.com/blader/humanizer)) on the drafted text. It's a broader,
+general-purpose version of what's already above -- covers passive voice, promotional language,
+superficial "-ing" analyses, vague attributions, sycophantic tone, and more, on top of the
+em-dash/rule-of-three/filler rules this file already calls out.
+
+**Precedence: this file wins on any conflict.** Humanizer is the wider net; the rules above are
+Jordan's specific calibration. If humanizer's suggested phrasing drifts from Jordan's voice (e.g.
+loosens the "was here" signature format, or over-smooths the internal-register bluntness), keep
+this file's version. In practice the two rarely conflict -- they're aligned in spirit -- but this
+file is the tiebreaker.
+
+Applies to the External register (packaged outputs) specifically. Not run on Internal-register
+chat replies as a file-editing step, since there's no draft to edit -- but the same underlying
+patterns (no em dashes, no filler, no forced rule-of-three, no sycophantic tone) apply there too,
+per the rules already stated above in this file.

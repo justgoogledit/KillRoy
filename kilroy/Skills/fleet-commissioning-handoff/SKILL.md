@@ -21,8 +21,9 @@ Package a single fleet's current commissioning state into a markdown artifact Jo
 ## Applies
 
 - [[Knowledge/Sources/2026-07-02-pc-amr-gates|Gate ownership map]] -- 220/250/270/280/290 -> owning team.
-- [[Knowledge/Personal/voice]] -- packaged outputs open with the "was here" signature.
+- [[Knowledge/Personal/voice]] -- packaged outputs open with the "was here" signature; see its "Humanizer pass on packaged outputs" section for the precedence rule below.
 - [[Knowledge/Personal/preferences]] -- one recommendation with reason; concrete over abstract.
+- `humanizer` skill (`~/.claude/skills/humanizer`) -- run on the drafted package before finalizing (step 6).
 
 ## Steps
 
@@ -34,7 +35,7 @@ Package a single fleet's current commissioning state into a markdown artifact Jo
    - Units listed in Master Tracker but not in AMR Hub -> flag as "incoming, not yet ingested."
    - Units in AMR Hub but not in Master Tracker -> flag as "in dashboard, no upstream record" (possible data-entry gap).
    - Units offline in Overmind but with open buyoff items -> flag as "may block gate progression."
-6. Render the handoff package to `Projects/handoffs/<YYYY-MM-DD>-<fleet>-handoff.md` using the output template below. Open with the "was here" signature.
+6. Draft the handoff package using the output template below. Open with the "was here" signature. Run the `humanizer` skill on the draft before finalizing -- [[Knowledge/Personal/voice]]'s rules win on any conflict (rare; see that file's "Humanizer pass" section). Write the final version to `Projects/handoffs/<YYYY-MM-DD>-<fleet>-handoff.md`.
 7. Append to `log.md`: `## [<date>] handoff | <fleet> -- <production-ready>/<total> ready, <open-item-count> open items`.
 
 ## Verify
@@ -48,6 +49,7 @@ Before handing the package back to Jordan:
 2. **Sum audit**: total unit count in the handoff = total unit count returned from `GET /api/amrs` for this fleet. No unit falls off.
 3. **No fabricated IDs**: every robot ID mentioned in the handoff appears in the Overmind payload, the AMR Hub payload, or the Master Tracker CSV. (The CSV is a valid source here, not just AMR Hub/Overmind -- step 5's "incoming, not yet ingested" finding necessarily cites a unit that exists only in the Master Tracker CSV.)
 4. **CSV freshness**: if the Master Tracker CSV's `mtime` is older than `$MASTER_TRACKER_STALE_WARN_HOURS`, include a `> Warning: Master Tracker CSV is <N>h old. Re-export before final handoff.` line at the top of the package.
+5. **Humanizer didn't touch facts**: re-run steps 1-3 above against the post-humanizer version, not just the draft. A rewrite pass can smooth phrasing in a way that loosens a specific number, drops a unit ID, or rephrases a blocker reason into something vaguer -- confirm none of that happened before delivering.
 
 If any verify step fails, do not deliver the package -- fix the underlying issue first.
 
@@ -103,3 +105,4 @@ If any verify step fails, do not deliver the package -- fix the underlying issue
 - Writing to AMR Hub. Read-only. Jordan updates gate status through the dashboard.
 - Skipping the CSV freshness check. Stale upstream data has bitten real handoffs before.
 - Multi-fleet output. This skill packages one fleet per invocation. Batch-mode is out of scope for v1.
+- Letting the humanizer pass rewrite facts. It edits prose, not data -- re-run Verify steps 1-3 against the post-humanizer version, not just the draft.

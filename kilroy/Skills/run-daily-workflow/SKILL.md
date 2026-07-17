@@ -29,8 +29,9 @@ The day runner. Orchestrates Kilroy's existing skills plus a task list into one 
 - [[Skills/fleet-commissioning-handoff/SKILL|fleet-commissioning-handoff]] -- referenced, never run automatically; the day file may recommend a handoff, Jordan triggers it.
 - [[Skills/session-recap/SKILL|session-recap]] -- run at close-out if anything reusable was learned.
 - [[Knowledge/Sources/2026-07-02-pc-amr-gates|Gate ownership map]] -- attributes every action to the team whose move unblocks it.
-- [[Knowledge/Personal/voice]] -- day file opens with the "was here" signature.
+- [[Knowledge/Personal/voice]] -- day file opens with the "was here" signature; see its "Humanizer pass on packaged outputs" section.
 - [[Knowledge/Personal/preferences]] -- short, concrete, one recommendation with reason.
+- `humanizer` skill (`~/.claude/skills/humanizer`) -- run on the prose portions only (signature, recommendation, midday-delta and close-out narrative lines). Never on the action-item bullets themselves -- those carry unit IDs, blocker text, and days-blocked figures that must stay verbatim, same rule as [[Skills/arriving-amr-progress/SKILL|arriving-amr-progress]].
 
 ## Steps
 
@@ -42,7 +43,7 @@ The day runner. Orchestrates Kilroy's existing skills plus a task list into one 
    - Scan `log.md` and `Knowledge/Lessons/*.md` "Open threads" for carry-overs from previous days, plus yesterday's day file "Carry-over" section if present.
    - Read `Projects/daily/inbox.md`'s `## Unconsumed` section. Every line there becomes a `(jordan-request)`-tagged action in today's list. Once folded in, remove those lines from `inbox.md` (leave `## Unconsumed` empty until Jordan adds more) -- an item lives in exactly one place at a time, either the inbox or a day file, never both.
    - Build today's action list: every blocker from the board becomes an action attributed to its owning team -- chase items for teams Jordan pushes (MFE, MFA Hardware), direct actions for Jordan's own side (MFA Controls / PC). Carry-overs come next, then drained inbox items. Rank by days-blocked descending; safety-gate (250/270) blockers first within a tie; inbox items have no days-blocked figure, so list them after the ranked blockers.
-   - Write the day file using the output template. One recommendation for the day, with the reason.
+   - Draft the day file using the output template. One recommendation for the day, with the reason. Run `humanizer` on the signature line and the recommendation only -- action-item bullets stay verbatim. Write the final version.
 3. **Midday pulse.** Re-pull the AMR Hub board and diff against the morning snapshot in the day file: gates that changed status, new blockers, blockers cleared. Also check `Projects/daily/inbox.md` for anything added since the morning drain; fold new items in under the same `(jordan-request)` tag and clear them the same way. Append a "Midday delta" section to the day file. If nothing changed on either front, say so in one line -- no fabricated movement.
 4. **Close-out.** Mark each action item done / moved / still open. Anything still open becomes tomorrow's "Carry-over" section. Append per-gate movement for the day (units that advanced a gate). Then run [[Skills/session-recap/SKILL|session-recap]] if anything reusable was learned. Append the log.md line.
 5. **Log format:** `## [<date>] daily | <phase> -- <n> actions, <n> blockers (<team>=<n>, ...), <n> carried over`.
@@ -62,6 +63,7 @@ Before handing the day file back to Jordan:
 3. **Fail loud**: if `check-connectors` reports a FAIL, or AMR Hub or the Master Tracker CSV is unreachable mid-run, the day file says so at the top and the affected sections are marked unavailable -- never silently reuse yesterday's numbers as today's. A WARN (e.g. stale CSV) is not a FAIL -- it surfaces as a banner line, not a blocker to producing the brief.
 4. **Close-out conservation**: actions done + moved + still-open = actions opened that morning (plus any added midday). No action silently disappears.
 5. **Inbox conservation**: every line drained from `inbox.md`'s `## Unconsumed` section appears in exactly one day file's action list, and is removed from `inbox.md` in the same step. No inbox item is folded in twice, and none is silently dropped without appearing in a day file.
+6. **Humanizer stayed in its lane**: action-item bullets in the final version are byte-for-byte identical to the pre-humanizer draft. Only the signature line and the recommendation changed.
 
 ## Output template
 
@@ -135,3 +137,4 @@ Full board: [[Projects/progress/<YYYY-MM-DD>-progress]]
 - Leaving a folded-in item sitting in `inbox.md`'s `## Unconsumed` section. It gets re-drained (and duplicated) the next morning if it isn't cleared.
 - Treating a WARN from `check-connectors` as a FAIL, or silently dropping a WARN instead of surfacing it in the day file's banner.
 - Writing to AMR Hub. Read-only -- Jordan updates gates in the dashboard.
+- Running the humanizer pass over action-item bullets. It touches the signature and recommendation only.

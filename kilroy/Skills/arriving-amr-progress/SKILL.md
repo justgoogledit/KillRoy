@@ -23,8 +23,9 @@ Track each incoming AMR's climb through the buyoff-gate ladder (220 -> 250 -> 27
 ## Applies
 
 - [[Knowledge/Sources/2026-07-02-pc-amr-gates|Gate ownership map]] -- authoritative source for which team owns each gate. Kilroy uses this to attribute blockers.
-- [[Knowledge/Personal/voice]] -- board output opens with the "was here" signature.
+- [[Knowledge/Personal/voice]] -- board output opens with the "was here" signature; see its "Humanizer pass on packaged outputs" section.
 - [[Knowledge/Personal/preferences]] -- short, concrete, one recommendation with reason.
+- `humanizer` skill (`~/.claude/skills/humanizer`) -- run on the prose portions only (step 5).
 
 ## Steps
 
@@ -45,7 +46,7 @@ Track each incoming AMR's climb through the buyoff-gate ladder (220 -> 250 -> 27
    - Blocker text (verbatim from the AMR Hub field)
    - Days-blocked (today minus `updatedAt`)
    - **Owning team** (lookup in the gate ownership map from `Knowledge/Sources/2026-07-02-pc-amr-gates`)
-5. Render the board to stdout AND write the same content to `Projects/progress/<YYYY-MM-DD>-progress.md`. Open with the "was here" signature. Group blockers by owning team so Jordan sees who to push.
+5. Draft the board. Open with the "was here" signature. Group blockers by owning team so Jordan sees who to push. Run the `humanizer` skill on the prose portions only -- the signature line and the recommendation -- never on the gate tables or blocker text, which must stay verbatim per Verify below. Render the final version to stdout AND write it to `Projects/progress/<YYYY-MM-DD>-progress.md`.
 6. Append to `log.md`: `## [<date>] progress | <at-220>/<at-250>/<at-270>/<at-280>/<production-ready> | blockers: MFE=<n>, MFA Controls=<n>, MFA Hardware=<n>`.
 
 ## Verify
@@ -56,6 +57,7 @@ Before returning the board:
 2. **Blocker traceability**: every blocker line has a matching non-empty `buyoff<gate>BlockedReason` in the raw response.
 3. **No false production-ready**: no unit is reported as `production-ready` unless all 4 gate statuses literally equal `Complete`.
 4. **Every blocker has an owning team**: no unattributed blockers. If the gate ownership map has no entry, stop and flag it to Jordan.
+5. **Humanizer stayed in its lane**: the gate tables and blocker text in the final version are byte-for-byte identical to the pre-humanizer draft. Only the signature line and the recommendation changed.
 
 ## Output template
 
@@ -116,3 +118,4 @@ Before returning the board:
 - Padding empty gates. If no unit is at-280, show `at-280: 0` explicitly -- Jordan reads the zeros as signal.
 - Fabricating days-blocked. Compute from `updatedAt`. If `updatedAt` is missing, say so; don't estimate.
 - Writing to AMR Hub. Read-only.
+- Running the humanizer pass over the whole board. It touches the signature and recommendation only -- gate tables and blocker text stay verbatim.
