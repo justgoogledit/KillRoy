@@ -21,6 +21,8 @@ Verify `.env` is filled and all three data sources (Overmind, AMR Hub, Master Tr
 
 This is a foundational skill (infrastructure, like [[Skills/skill-creator/SKILL|skill-creator]] and [[Skills/session-recap/SKILL|session-recap]]), not a fourth Jordan-facing workflow -- it doesn't count against the "add a skill only after hitting the same manual task 3+ times" rule, the same way skill-creator and session-recap don't.
 
+**Relationship to the session-start hook** (`.claude/hooks/session-start.sh`, repo root): that hook runs a fast, fixed-timeout reachability probe of the same three sources on every Claude Code session start, so a bad `.env` surfaces the moment a session opens rather than only at the next morning brief. It is not a replacement for this skill -- it skips the deeper checks this skill does (listing every missing `.env` var by name, treating a 2xx AMR Hub response as needing parseable JSON, being callable on demand as "kilroy check") and it never writes to `log.md`. This skill remains the authoritative gate `run-daily-workflow` calls before pulling real data.
+
 ## Applies
 
 - `.env.example` -- the four required vars this skill checks for.

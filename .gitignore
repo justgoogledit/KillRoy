@@ -2,3 +2,6 @@
 # skills/ is mattpocock/skills, pulled in for skill-authoring reference.
 # It has its own git history; Kilroy has no cross-repo skill imports (see design doc).
 skills/
+
+# Claude Code local settings -- per-developer permission overrides, not shared.
+.claude/settings.local.json
