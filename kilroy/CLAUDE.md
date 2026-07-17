@@ -45,7 +45,7 @@ Inherited from the agentic-os starter-pack:
 
 - `Skills/` -- how to do things (playbook)
 - `Knowledge/` -- what Kilroy knows (voice, sources, lessons)
-- `Projects/` -- what Kilroy has produced (`handoffs/`, `progress/`)
+- `Projects/` -- what Kilroy has produced (`handoffs/`, `progress/`, `daily/`)
 
 ## Plan mode is the default
 
