@@ -1,0 +1,22 @@
+// SYNTHETIC FIXTURE DATA -- DELIBERATELY BROKEN. NOT A REAL AMR HUB RESPONSE.
+// Generated for offline dry-run testing of Kilroy's fail-loud behavior only.
+// Never use this file's content in a real handoff or progress package delivered to Jordan.
+// See Knowledge/Sources/fixtures/README.md for the failure mode this simulates and how to use it.
+//
+// Failure mode simulated: AMR Hub connection cut / proxy error mid-response -- a truncated,
+// corrupted HTTP body. This is deliberately NOT parseable as JSON. If your JSON parser can
+// read this file without throwing an error, something is wrong with the fixture, not with
+// Kilroy -- report it.
+{
+  "fleetId": "gftx-cybercab-2m-b3-agv",
+  "amrs": [
+    {
+      "unitId": "T3L2_038",
+      "fleetId": "gftx-cybercab-2m-b3-agv",
+      "buyoff220Status": "Complete",
+      "buyoff220BlockedReason": "",
+      "buyoff250Status": "Complete",
+      "buyoff250BlockedReason": "",
+      "buyoff270Status": "Complete",
+      "buyoff270BlockedReason": "",
+      "buyoff280Status": "Compl

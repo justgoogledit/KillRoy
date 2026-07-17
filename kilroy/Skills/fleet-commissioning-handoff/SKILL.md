@@ -46,7 +46,7 @@ Before handing the package back to Jordan:
    - One fact from the AMR Hub response (e.g. a specific unit's blocked reason)
    Confirm both quotes appear verbatim in the raw response payloads.
 2. **Sum audit**: total unit count in the handoff = total unit count returned from `GET /api/amrs` for this fleet. No unit falls off.
-3. **No fabricated IDs**: every robot ID mentioned in the handoff appears in either the Overmind or AMR Hub payload.
+3. **No fabricated IDs**: every robot ID mentioned in the handoff appears in the Overmind payload, the AMR Hub payload, or the Master Tracker CSV. (The CSV is a valid source here, not just AMR Hub/Overmind -- step 5's "incoming, not yet ingested" finding necessarily cites a unit that exists only in the Master Tracker CSV.)
 4. **CSV freshness**: if the Master Tracker CSV's `mtime` is older than `$MASTER_TRACKER_STALE_WARN_HOURS`, include a `> Warning: Master Tracker CSV is <N>h old. Re-export before final handoff.` line at the top of the package.
 
 If any verify step fails, do not deliver the package -- fix the underlying issue first.

@@ -40,6 +40,7 @@ Track each incoming AMR's climb through the buyoff-gate ladder (220 -> 250 -> 27
    - `at-280` -- 220+250+270 complete, 280 in progress
    - `production-ready` -- all 4 complete
    Add a `pending-290-column` note on production-ready units (the amrtracker schema does not yet have `buyoff290Status`).
+   If any gate status field is null, missing, or otherwise unreadable for a unit, do not force it into a bucket and do not drop it from the total. List it under `## Data quality flags` in the output instead (see template) -- per `CLAUDE.md`'s fail-loud rule, a bad field is a data-quality problem to surface, not something to guess past.
 4. For each blocked unit (non-empty `*BlockedReason`), attach:
    - Blocker text (verbatim from the AMR Hub field)
    - Days-blocked (today minus `updatedAt`)
@@ -51,7 +52,7 @@ Track each incoming AMR's climb through the buyoff-gate ladder (220 -> 250 -> 27
 
 Before returning the board:
 
-1. **Sum audit**: sum of per-gate bucket counts = total unit count from AMR Hub. No unit falls off.
+1. **Sum audit**: sum of per-gate bucket counts + count of units listed under `Data quality flags` = total unit count from AMR Hub. No unit falls off, and no unit is silently force-bucketed to make the sum work.
 2. **Blocker traceability**: every blocker line has a matching non-empty `buyoff<gate>BlockedReason` in the raw response.
 3. **No false production-ready**: no unit is reported as `production-ready` unless all 4 gate statuses literally equal `Complete`.
 4. **Every blocker has an owning team**: no unattributed blockers. If the gate ownership map has no entry, stop and flag it to Jordan.
@@ -74,6 +75,12 @@ Before returning the board:
 | production-ready | <n> | ... |
 
 (repeat per fleet)
+
+## Data quality flags
+
+<list any unit with a null, missing, or unreadable gate-status field. Do not bucket these units above and do not drop them from the total -- name the field, state what's still known about the unit, and say what would resolve it. Omit this section entirely if there are no flags -- don't render an empty header.>
+
+- T3L2_<nnn> -- `buyoff<gate>Status` returned null/missing. <what's known> Needs <resolution step>.
 
 ## Blockers by owning team
 

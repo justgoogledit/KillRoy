@@ -1,0 +1,15 @@
+{
+  "_FIXTURE_WARNING": "SYNTHETIC FIXTURE DATA -- NOT A REAL OVERMIND GRAPHQL RESPONSE. Generated for offline dry-run testing of Kilroy's fleet-commissioning-handoff skill only. Do not cite any field from this file in a real handoff delivered to Jordan. See Knowledge/Sources/fixtures/README.md.",
+  "note": "Illustrative fixture only -- not a real GraphQL schema dump. Shape is simplified to the fields fleet-commissioning-handoff/SKILL.md step 2 asks for: image tag, robot count, tracer events, MFS wiring, RobotConfigs.yaml deltas.",
+  "fleetId": "gftx-cybercab-2m-b3-agv",
+  "imageTag": "v2.24.1.0-42-gbc22f55275",
+  "robotCount": 9,
+  "robotCountNote": "Robots onboarded to Overmind -- units at buyoff 250 (safety, which includes 'add AMR to Overmind') or later. Will not equal AMR Hub's total unit count; units still at gate 220 have not been added to Overmind yet.",
+  "tracerEventsActive": 3,
+  "mfsWiring": "12/12 stations wired to MFS. T3L2_042 flagged for re-wire pending localization fix at gate 270.",
+  "robotConfigsYamlDelta": [
+    "- robot.T3L2_041.map_id: cybercab_2m_b3_v14",
+    "+ robot.T3L2_041.map_id: cybercab_2m_b3_v15",
+    "+ robot.T3L2_048.charger_profile: fast_v2"
+  ]
+}
