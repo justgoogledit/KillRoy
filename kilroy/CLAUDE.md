@@ -39,6 +39,22 @@ Wired via `.env`:
 
 Never hardcode URLs, tokens, or paths inside skills. Everything through `.env`.
 
+## Agent skills
+
+General-purpose engineering skills from [mattpocock/skills](https://github.com/mattpocock/skills), installed globally (`~/.claude/skills/`, not part of this repo's tracked tree) for use if Jordan does general dev work in this repo -- separate from Kilroy's own AMR-tracking scope above. They don't count against the "Skill sprawl" anti-pattern below; that rule is about Kilroy's own `Skills/` folder.
+
+### Issue tracker
+
+GitHub (`justgoogledit/KillRoy`), via the `gh` CLI. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Default 5 canonical roles (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`). See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context. `CONTEXT.md` and `docs/adr/` created lazily at `kilroy/` (not the true git root -- see the note in `docs/agents/domain.md`). See `docs/agents/domain.md`.
+
 ## Three-folder framework
 
 Inherited from the agentic-os starter-pack:
