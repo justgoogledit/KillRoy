@@ -11,6 +11,20 @@ for all operations.
 > `CLAUDE.md`'s `## Agent skills` section) is stale after the move; update both in one pass once
 > the enterprise clone exists and its remote is known.
 
+> **Sandbox-specific: some remote Claude Code sessions restrict `gh`'s GraphQL calls.**
+> Discovered 2026-07-18 in this specific remote session: the egress proxy only allows a pinned
+> set of PR-review GraphQL operations. `gh repo view`, `gh auth status`, `gh issue list`, `gh
+> issue create`, and most other high-level `gh issue`/`gh pr` subcommands use GraphQL internally
+> and get rejected with `HTTP 403: This GraphQL query is not enabled for this session`. This is
+> scoped to that kind of sandboxed session, not a general `gh` limitation -- plain REST calls
+> work fine (`gh api repos/<owner>/<repo>/issues`, etc.), and the proxy's own error message points
+> at this as the workaround. On a real machine (the eventual work-account setup), the commands
+> below should work exactly as documented, unrestricted -- this note only matters if a future
+> session hits the same 403. If it does, use the REST form instead, e.g.:
+> `gh api repos/<owner>/<repo>/issues -f title="..." -f body="..." -f 'labels[]=ready-for-agent'`
+> in place of `gh issue create`, or `gh api repos/<owner>/<repo>/issues -X GET` in place of
+> `gh issue list`.
+
 ## Conventions
 
 - **Create an issue**: `gh issue create --title "..." --body "..."`. Use a heredoc for multi-line bodies.
