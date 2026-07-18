@@ -1,0 +1,100 @@
+{
+  "_FIXTURE_WARNING": "SYNTHETIC FIXTURE DATA -- NOT A REAL MICROSOFT GRAPH / PLANNER RESPONSE. Generated for offline dry-run testing of Kilroy's run-daily-workflow skill only. Do not cite any task, GUID, or plan name from this file in a real day file or status update delivered to Jordan. See Knowledge/Sources/fixtures/README.md.",
+  "note": "Illustrative fixture only -- not a full Graph schema dump. Shape is simplified to the fields run-daily-workflow's morning phase asks for: id, planId, bucketId, title, dueDateTime, percentComplete, and an assignments object keyed by AAD object GUIDs (real Planner tasks do not carry a plain 'assignee' field).",
+  "@odata.context": "https://graph.microsoft.com/v1.0/$metadata#planner/tasks",
+  "generatedFor": "offline dry-run of run-daily-workflow's Planner digest step (morning phase)",
+  "plans": {
+    "_note": "Real Graph API returns plan titles via a separate GET /planner/plans/{id} call, not inline on each task. Bundled here for dry-run convenience so the digest's group-by-plan-name step has something to resolve against -- not a literal field on a real Planner API response. See README.md.",
+    "FIXTURE-planId-8xQg5FS2LkCpPLNA": "MFA Controls -- Daily Ops",
+    "FIXTURE-planId-8xQg5FS2LkCpPLNB": "GFTX AMR Acceptance -- Cross-team"
+  },
+  "value": [
+    {
+      "id": "FIXTURE-taskId-0001",
+      "planId": "FIXTURE-planId-8xQg5FS2LkCpPLNA",
+      "bucketId": "FIXTURE-bucketId-PLNA-todo",
+      "title": "Send buyoff status update to leadership before EOD",
+      "percentComplete": 0,
+      "priority": 5,
+      "createdDateTime": "2026-07-14T13:10:00Z",
+      "dueDateTime": "2026-07-18T05:00:00Z",
+      "assignments": {
+        "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee": {
+          "@odata.type": "#microsoft.graph.plannerAssignment",
+          "assignedDateTime": "2026-07-14T13:12:00Z",
+          "orderHint": " !"
+        }
+      }
+    },
+    {
+      "id": "FIXTURE-taskId-0002",
+      "planId": "FIXTURE-planId-8xQg5FS2LkCpPLNA",
+      "bucketId": "FIXTURE-bucketId-PLNA-todo",
+      "title": "Reconcile MFA Controls gate ownership doc with T3L2_046 blocker",
+      "_edgeCaseNote": "DELIBERATE FIXTURE CASE -- assigned to a different AAD object ID than Jordan's (not the GRAPH_API_USER_OBJECT_ID value). Due today, but must NOT appear in Jordan's digest. Tests that the assignment filter actually filters rather than pulling every due-today task in the plan.",
+      "percentComplete": 50,
+      "priority": 5,
+      "createdDateTime": "2026-07-15T09:45:00Z",
+      "dueDateTime": "2026-07-18T05:00:00Z",
+      "assignments": {
+        "11111111-2222-4333-8444-555555555555": {
+          "@odata.type": "#microsoft.graph.plannerAssignment",
+          "assignedDateTime": "2026-07-15T09:46:00Z",
+          "orderHint": " !"
+        }
+      }
+    },
+    {
+      "id": "FIXTURE-taskId-0003",
+      "planId": "FIXTURE-planId-8xQg5FS2LkCpPLNB",
+      "bucketId": "FIXTURE-bucketId-PLNB-todo",
+      "title": "Review Sonic Master Tracker CSV export cadence with SharePoint owner",
+      "percentComplete": 0,
+      "priority": 5,
+      "createdDateTime": "2026-07-16T11:00:00Z",
+      "dueDateTime": "2026-07-22T05:00:00Z",
+      "assignments": {
+        "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee": {
+          "@odata.type": "#microsoft.graph.plannerAssignment",
+          "assignedDateTime": "2026-07-16T11:02:00Z",
+          "orderHint": " !"
+        }
+      }
+    },
+    {
+      "id": "FIXTURE-taskId-0004",
+      "planId": "FIXTURE-planId-8xQg5FS2LkCpPLNB",
+      "bucketId": "FIXTURE-bucketId-PLNB-todo",
+      "title": "Confirm E-stop revalidation schedule with MFA Hardware",
+      "_edgeCaseNote": "DELIBERATE FIXTURE DEFECT -- dueDateTime is JSON null (missing/unreadable field), mirroring amr-hub-response.json's T3L2_050 null-field pattern. This task must NOT be silently dropped and must NOT be folded into the due-today digest; it must be named explicitly in its own data-quality-flag section. See README.md.",
+      "percentComplete": 0,
+      "priority": 5,
+      "createdDateTime": "2026-07-10T08:30:00Z",
+      "dueDateTime": null,
+      "assignments": {
+        "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee": {
+          "@odata.type": "#microsoft.graph.plannerAssignment",
+          "assignedDateTime": "2026-07-10T08:31:00Z",
+          "orderHint": " !"
+        }
+      }
+    },
+    {
+      "id": "FIXTURE-taskId-0005",
+      "planId": "FIXTURE-planId-8xQg5FS2LkCpPLNB",
+      "bucketId": "FIXTURE-bucketId-PLNB-todo",
+      "title": "Draft weekly status slide for leadership sync",
+      "percentComplete": 25,
+      "priority": 5,
+      "createdDateTime": "2026-07-17T16:20:00Z",
+      "dueDateTime": "2026-07-18T05:00:00Z",
+      "assignments": {
+        "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee": {
+          "@odata.type": "#microsoft.graph.plannerAssignment",
+          "assignedDateTime": "2026-07-17T16:21:00Z",
+          "orderHint": " !"
+        }
+      }
+    }
+  ]
+}

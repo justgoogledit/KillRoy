@@ -16,7 +16,7 @@ Three workflows, plus one foundational check that gates them:
 2. [[Skills/arriving-amr-progress/SKILL|arriving-amr-progress]] -- track incoming AMRs across the 5-gate ladder, attribute blockers to the team whose action unblocks them.
 3. [[Skills/run-daily-workflow/SKILL|run-daily-workflow]] -- day runner. Morning brief, midday delta, end-of-day close-out and carry-overs. Orchestrates the two skills above into Jordan's daily loop. Runs proactively on a schedule -- see its "Proactive invocation" section.
 
-Plus [[Skills/check-connectors/SKILL|check-connectors]] (foundational, like `skill-creator`/`session-recap`) -- verifies `.env` and all three data sources before any workflow above pulls real data. Doesn't count against the anti-sprawl rule below; it's infrastructure, not a fourth Jordan-facing workflow.
+Plus [[Skills/check-connectors/SKILL|check-connectors]] (foundational, like `skill-creator`/`session-recap`) -- verifies `.env` and all four data sources before any workflow above pulls real data. Doesn't count against the anti-sprawl rule below; it's infrastructure, not a fourth Jordan-facing workflow.
 
 Anything outside this scope: flag it, don't sprawl. Runtime ops and live troubleshooting are out of scope for Kilroy -- route those questions to the `overmind` MCP (`AskOvermind`), which already does live GraphQL investigation against a fleet plus reads the fleet-manager repo for context. `fleet-monitor` / `fleet-troubleshooter` / `shift-handoff` are placeholder names for possible future dedicated agents at `~/.claude/agents/` -- they don't exist yet. Don't assume they do; build one only after hitting the same runtime-ops gap 3+ times that `overmind` doesn't cover.
 
@@ -36,8 +36,11 @@ Wired via `.env`:
 - **Overmind GraphQL** -- edge-authed on Tesla corp network. Base URL template per fleet. No token in v1.
 - **AMR Hub (`amrtracker`)** -- local dev instance at `http://localhost:5000`, unauthenticated in dev mode. Read-only for v1 (Kilroy never PATCHes gates).
 - **Sonic AMR Master Tracker** -- CSV export from SharePoint at `$MASTER_TRACKER_CSV_PATH`. Read-only.
+- **Microsoft Graph / Planner** -- app-registration auth (`GRAPH_API_TENANT_ID`, `GRAPH_API_CLIENT_ID`, `GRAPH_API_CLIENT_SECRET`). Plans identified by `PLANNER_PLAN_IDS` (comma-separated, one or more). Jordan's assignee filter resolves via `GET /me` at runtime, with `GRAPH_API_USER_OBJECT_ID` as an `.env` override. Read-only.
 
 Never hardcode URLs, tokens, or paths inside skills. Everything through `.env`.
+
+Planner is a different, lower-stakes domain than the three AMR sources above -- task due dates and assignments aren't safety-critical, and Kilroy re-reads Planner fresh each morning rather than tracking it as system of record. It doesn't fall under the safety-adjacent tier or its non-negotiables in the section above; don't fold Planner changes into that safety read-through process.
 
 ## Agent skills
 
@@ -68,7 +71,7 @@ Inherited from the agentic-os starter-pack:
 No build, lint, or test tooling. This repo is prose and markdown -- `SKILL.md` files, `Knowledge/*.md`, generated `Projects/*.md` reports. Nothing to compile or run.
 
 - **Verification is per-skill, not a global test suite.** Every `Skills/*/SKILL.md` has its own `## Verify` section -- a checklist run after executing that skill (sum audits, fact-traceability checks, fail-loud confirmations). That's the closest thing to "tests" here.
-- **Dry-run a skill without live connectors** using `Knowledge/Sources/fixtures/` -- synthetic AMR Hub, Overmind, and Master Tracker CSV data, including a deliberately-broken response for exercising the fail-loud path. See its `README.md` for the exact invocation pattern.
+- **Dry-run a skill without live connectors** using `Knowledge/Sources/fixtures/` -- synthetic AMR Hub, Overmind, Master Tracker CSV, and Planner/Graph API data, including a deliberately-broken response for exercising the fail-loud path. See its `README.md` for the exact invocation pattern.
 - **`.claude/hooks/session-start.sh`** runs a fast connector-reachability probe on every session start (registered in `.claude/settings.json`) -- a lightweight heads-up, not a replacement for the full `check-connectors` skill.
 - **Skill file shape:** every `SKILL.md` follows the same template -- frontmatter, When to use, Applies, Steps, Verify, Output template, Examples, Anti-patterns. See `Skills/skill-creator/SKILL.md` for the canonical version before adding or editing a skill.
 

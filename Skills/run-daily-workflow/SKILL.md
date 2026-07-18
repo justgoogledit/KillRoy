@@ -26,12 +26,14 @@ The day runner. Orchestrates Kilroy's existing skills plus a task list into one 
 
 - [[Skills/check-connectors/SKILL|check-connectors]] -- run first, silently, before any data pull. A FAIL here stops the morning phase before it starts.
 - [[Skills/arriving-amr-progress/SKILL|arriving-amr-progress]] -- run end to end for the live gate board; the day file's blockers come from it.
+- Microsoft Graph API / Planner (`PLANNER_PLAN_IDS`, `GRAPH_API_USER_OBJECT_ID`, from `.env`) -- source for the "Today's tasks (Planner)" section. check-connectors only probes the first configured plan for reachability; this skill's morning phase pulls all of them.
 - [[Skills/fleet-commissioning-handoff/SKILL|fleet-commissioning-handoff]] -- referenced, never run automatically; the day file may recommend a handoff, Jordan triggers it.
 - [[Skills/session-recap/SKILL|session-recap]] -- run at close-out if anything reusable was learned.
 - [[Knowledge/Sources/2026-07-02-pc-amr-gates|Gate ownership map]] -- attributes every action to the team whose move unblocks it.
+- [[Knowledge/Personal/daily-workflow]] -- what Jordan's day looks like and which M365 tools matter; its v1/deferred split is why this step pulls due-today Planner tasks only. Teams mentions, flagged email, and team-tracked (non-assigned) Planner tasks are deferred, not forgotten -- see that file.
 - [[Knowledge/Personal/voice]] -- day file opens with the "was here" signature; see its "Humanizer pass on packaged outputs" section.
 - [[Knowledge/Personal/preferences]] -- short, concrete, one recommendation with reason.
-- `humanizer` skill (`~/.claude/skills/humanizer`) -- run on the prose portions only (signature, recommendation, midday-delta and close-out narrative lines). Never on the action-item bullets themselves -- those carry unit IDs, blocker text, and days-blocked figures that must stay verbatim, same rule as [[Skills/arriving-amr-progress/SKILL|arriving-amr-progress]].
+- `humanizer` skill (`~/.claude/skills/humanizer`) -- run on the prose portions only (signature, recommendation, midday-delta and close-out narrative lines). Never on the action-item bullets themselves -- those carry unit IDs, blocker text, and days-blocked figures that must stay verbatim, same rule as [[Skills/arriving-amr-progress/SKILL|arriving-amr-progress]]. Same scoping rule extends to the Planner digest: never run over task titles, due dates, or plan names in "Today's tasks (Planner)" -- those stay verbatim, same reasoning as blocker text.
 
 ## Steps
 
@@ -40,12 +42,14 @@ The day runner. Orchestrates Kilroy's existing skills plus a task list into one 
 2. **Morning brief.**
    - Run [[Skills/check-connectors/SKILL|check-connectors]] first, silently. If it reports `NOT SAFE TO RUN A SKILL`, stop here -- write the day file's opening line as the connector-check failure report instead of a gate board, and skip straight to that. Do not attempt the AMR Hub pull below on a red check. If it reports all-PASS but with a WARN (e.g. a stale Master Tracker CSV), carry that WARN text into the day file's opening banner as its own line, same style as `fleet-commissioning-handoff`'s freshness warning, then proceed with the brief.
    - Run [[Skills/arriving-amr-progress/SKILL|arriving-amr-progress]] end to end (its own Verify included) to get the live gate board. If Jordan named a focus fleet, pass it through.
+   - Resolve Jordan's Azure AD object ID for the Planner pull: use `GRAPH_API_USER_OBJECT_ID` from `.env` if it's set, otherwise call `GET /me` against Microsoft Graph and use the returned `id`. If check-connectors flagged the Planner check as unreachable, skip the Planner pull entirely and say so in the day file's Planner section -- don't attempt a partial pull on a red check, same rule as the AMR Hub pull above.
+   - Pull tasks due today across every plan listed in `PLANNER_PLAN_IDS` -- all configured plans, not just the first one (the first-plan-only check is check-connectors' reachability probe; this is the real pull) -- filtered to `assignments` entries keyed by the resolved object ID. Group the results by plan name, mirroring how the AMR board groups by fleet. A task with a null or missing `dueDateTime` is not folded into the due-today list and not silently dropped -- name it explicitly under a `Data quality flags (Planner)` line in that section, same pattern as [[Skills/arriving-amr-progress/SKILL|arriving-amr-progress]]'s handling of a null gate-status field. Jordan asked for due-today only -- don't add overdue items on top of that.
    - Scan `log.md` and `Knowledge/Lessons/*.md` "Open threads" for carry-overs from previous days, plus yesterday's day file "Carry-over" section if present.
    - Read `Projects/daily/inbox.md`'s `## Unconsumed` section. Every line there becomes a `(jordan-request)`-tagged action in today's list. Once folded in, remove those lines from `inbox.md` (leave `## Unconsumed` empty until Jordan adds more) -- an item lives in exactly one place at a time, either the inbox or a day file, never both.
-   - Build today's action list: every blocker from the board becomes an action attributed to its owning team -- chase items for teams Jordan pushes (MFE, MFA Hardware), direct actions for Jordan's own side (MFA Controls / PC). Carry-overs come next, then drained inbox items. Rank by days-blocked descending; safety-gate (250/270) blockers first within a tie; inbox items have no days-blocked figure, so list them after the ranked blockers.
-   - Draft the day file using the output template. One recommendation for the day, with the reason. Run `humanizer` on the signature line and the recommendation only -- action-item bullets stay verbatim. Write the final version.
+   - Build today's action list: every blocker from the board becomes an action attributed to its owning team -- chase items for teams Jordan pushes (MFE, MFA Hardware), direct actions for Jordan's own side (MFA Controls / PC). Carry-overs come next, then drained inbox items. Rank by days-blocked descending; safety-gate (250/270) blockers first within a tie; inbox items have no days-blocked figure, so list them after the ranked blockers. Planner tasks never enter this list -- they get their own section, see the output template.
+   - Draft the day file using the output template, including the Planner digest section. One recommendation for the day, with the reason. Run `humanizer` on the signature line and the recommendation only -- action-item bullets and Planner task lines stay verbatim. Write the final version.
 3. **Midday pulse.** Re-pull the AMR Hub board and diff against the morning snapshot in the day file: gates that changed status, new blockers, blockers cleared. Also check `Projects/daily/inbox.md` for anything added since the morning drain; fold new items in under the same `(jordan-request)` tag and clear them the same way. Append a "Midday delta" section to the day file. If nothing changed on either front, say so in one line -- no fabricated movement.
-4. **Close-out.** Mark each action item done / moved / still open. Anything still open becomes tomorrow's "Carry-over" section. Append per-gate movement for the day (units that advanced a gate). Then run [[Skills/session-recap/SKILL|session-recap]] if anything reusable was learned. Append the log.md line.
+4. **Close-out.** Mark each action item done / moved / still open. Anything still open becomes tomorrow's "Carry-over" section. Append per-gate movement for the day (units that advanced a gate). Planner tasks are excluded from this reconciliation entirely -- they don't count toward the done/moved/still-open conservation check and they don't carry over via the day file's Carry-over mechanism. Reasoning: for AMR blockers the day file *is* the tracking system, so conservation matters -- an action that silently disappears is a real problem. For Planner tasks, Planner itself is the system of record; Kilroy re-reads it fresh every morning, so carrying a "still open" Planner task forward here would just create a second, divergent copy of state Planner already owns. Say so explicitly in the Close-out section: "Planner tasks are not reconciled here -- see Planner directly for current status." Then run [[Skills/session-recap/SKILL|session-recap]] if anything reusable was learned. Append the log.md line.
 5. **Log format:** `## [<date>] daily | <phase> -- <n> actions, <n> blockers (<team>=<n>, ...), <n> carried over`.
 
 ## Proactive invocation
@@ -64,6 +68,9 @@ Before handing the day file back to Jordan:
 4. **Close-out conservation**: actions done + moved + still-open = actions opened that morning (plus any added midday). No action silently disappears.
 5. **Inbox conservation**: every line drained from `inbox.md`'s `## Unconsumed` section appears in exactly one day file's action list, and is removed from `inbox.md` in the same step. No inbox item is folded in twice, and none is silently dropped without appearing in a day file.
 6. **Humanizer stayed in its lane**: action-item bullets in the final version are byte-for-byte identical to the pre-humanizer draft. Only the signature line and the recommendation changed.
+7. **Planner task traceability**: every task listed in "Today's tasks (Planner)" matches a real row from the Graph API pull (or the fixture, in a dry-run), filtered to the resolved object ID and due today. No invented tasks.
+8. **Planner data quality flags**: a task with a null or missing `dueDateTime` is named explicitly under a "Data quality flags (Planner)" line -- never silently dropped, never guessed into the due-today list. Same pattern as [[Skills/arriving-amr-progress/SKILL|arriving-amr-progress]]'s "Data quality flags" section.
+9. **Planner humanizer scope**: Planner task lines in the final version are byte-for-byte identical to the pre-humanizer draft. Same pattern as Verify item 6 above -- task titles, due dates, and plan names never get touched by humanizer.
 
 ## Output template
 
@@ -90,6 +97,16 @@ Before handing the day file back to Jordan:
 - [ ] <carry-over item> -- (carry-over from <YYYY-MM-DD>)
 - [ ] <item text from inbox.md> -- (jordan-request, added <YYYY-MM-DD HH:MM>)
 
+## Today's tasks (Planner)
+
+**<Plan name A> (<n>)**
+- [ ] <task title> -- due today
+
+**<Plan name B> (<n>)**
+- [ ] <task title> -- due today
+
+Data quality flags (Planner): <task title> -- `dueDateTime` returned null/missing, excluded from the list above. Needs <resolution step>. (Omit this line entirely if there are no flags.)
+
 ## Board snapshot
 
 | Fleet | at-220 | at-250 | at-270 | at-280 | production-ready |
@@ -113,6 +130,8 @@ Full board: [[Projects/progress/<YYYY-MM-DD>-progress]]
 - Moved: <n> -- <items, where they went>
 - Still open (tomorrow's carry-over): <n> -- <items>
 - Gate movement: <unit> advanced <gate> -> <gate>, ...
+
+Planner tasks are not reconciled here -- see Planner directly for current status.
 
 ## Recommendation
 
@@ -138,3 +157,7 @@ Full board: [[Projects/progress/<YYYY-MM-DD>-progress]]
 - Treating a WARN from `check-connectors` as a FAIL, or silently dropping a WARN instead of surfacing it in the day file's banner.
 - Writing to AMR Hub. Read-only -- Jordan updates gates in the dashboard.
 - Running the humanizer pass over action-item bullets. It touches the signature and recommendation only.
+- Silently dropping a Planner pull failure. If the Planner check-connectors probe or the full morning-phase pull fails, say so in the day file's Planner section -- don't zero it out quietly.
+- Inventing overdue-item handling for Planner. Jordan asked for due-today only, not overdue-inclusive -- don't add scope he didn't ask for.
+- Reconciling Planner tasks at close-out. Planner is the system of record and Kilroy re-reads it fresh every morning -- don't fold Planner tasks into the done/moved/still-open count and don't carry them forward.
+- Running the humanizer pass over Planner task lines. Same rule as action-item bullets -- task titles, due dates, and plan names stay verbatim.
