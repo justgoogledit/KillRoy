@@ -2,7 +2,7 @@
   "name": "kilroy-connectors",
   "version": "0.1.0",
   "private": true,
-  "description": "Kilroy's typed MCP connector server -- one read-only tool per data source. AMR Hub, Overmind, and the Master Tracker CSV so far; Planner follows (ticket #10).",
+  "description": "Kilroy's typed MCP connector server -- one read-only tool per data source: AMR Hub, Overmind, the Master Tracker CSV, and Planner.",
   "type": "module",
   "main": "server.js",
   "scripts": {

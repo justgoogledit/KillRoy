@@ -21,7 +21,7 @@ mistake obvious immediately.
 | `master-tracker.csv` | The `master_tracker_get_rows` MCP tool's underlying `$MASTER_TRACKER_CSV_PATH` export (happy path) | Cross-reference source. Deliberately out of sync with the AMR Hub fixture by one row in each direction (see Edge cases below). |
 | `master-tracker-stale.csv` | Same CSV export, but stale | Byte-identical data to `master-tracker.csv`. The point of this file is its file *mtime*, not its content -- see Stale-CSV test below. |
 | `overmind-fleet-state.json` | The `overmind_get_fleet_state` MCP tool's underlying Overmind pull for `gftx-cybercab-2m-b3-agv` (the tool also accepts these flat fixture bytes directly, exactly for dry-runs) | Image tag, robot count, tracer events, MFS wiring, `RobotConfigs.yaml` deltas -- the fields `fleet-commissioning-handoff` step 2 asks for. Illustrative shape only, not a real GraphQL schema dump. |
-| `planner-tasks-response.json` | Microsoft Graph Planner task pull (happy path, across 2 plans) | 5 synthetic `plannerTask` objects for `run-daily-workflow`'s morning-phase Planner digest: 2 tasks due today assigned to Jordan (across both plans), 1 task due today assigned to someone else (must be filtered out), 1 task not due today, 1 task with a null `dueDateTime` (edge case). Illustrative shape only, not a full Graph schema dump. |
+| `planner-tasks-response.json` | The `planner_get_tasks` MCP tool's underlying Microsoft Graph Planner task pull (happy path, across 2 plans) | 5 synthetic `plannerTask` objects for `run-daily-workflow`'s morning-phase Planner digest: 2 tasks due today assigned to Jordan (across both plans), 1 task due today assigned to someone else (must be filtered out), 1 task not due today, 1 task with a null `dueDateTime` (edge case). Illustrative shape only, not a full Graph schema dump -- the tool itself makes separate per-plan title/tasks calls plus a token call, unlike this bundled convenience file; see `mcp-server/test/planner.test.js` for the real multi-endpoint shape. |
 
 ## How to dry-run a skill against these fixtures
 
@@ -50,11 +50,12 @@ For `run-daily-workflow`'s morning-phase Planner digest, name the Planner fixtur
 synthetic env override together:
 
 > "Dry-run the morning phase of `run-daily-workflow`. Use
-> `Knowledge/Sources/fixtures/planner-tasks-response.json` in place of the live Graph API pull
-> across `PLANNER_PLAN_IDS`, treat `GRAPH_API_USER_OBJECT_ID=aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee`
-> as the resolved Jordan object ID (skip the real `GET /me` call), and treat **2026-07-18** (the
-> fixture's baked-in reference date -- see below) as 'today' for the due-today comparison. Run
-> Verify exactly as written, including the data-quality-flag check on the null-`dueDateTime` task."
+> `Knowledge/Sources/fixtures/planner-tasks-response.json` in place of the `planner_get_tasks` MCP
+> tool's live Graph API pull across `PLANNER_PLAN_IDS`, treat
+> `GRAPH_API_USER_OBJECT_ID=aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee` as the resolved Jordan object ID
+> (skip the real `GET /me` call), and treat **2026-07-18** (the fixture's baked-in reference date
+> -- see below) as 'today' for the due-today comparison. Run Verify exactly as written, including
+> the data-quality-flag check on the null-`dueDateTime` task."
 
 ### Synthetic env values for the Planner fixture
 
@@ -91,7 +92,7 @@ one pairing and what each must produce.
 | 3 | `fleet-commissioning-handoff` | `overmind-fleet-state.json` for the `overmind_get_fleet_state` MCP tool call, `amr-hub-response.json` for the `amr_hub_get_units` MCP tool call, `master-tracker.csv` for the `master_tracker_get_rows` MCP tool call | `touch master-tracker.csv` to now | Package with both cross-reference findings (`T3L2_047` hub-only, `T3L2_051` CSV-only), no staleness banner |
 | 4 | `fleet-commissioning-handoff` | as pairing 3, but `amr-hub-response-broken.json` | none | Fails loud at the AMR Hub pull -- no package, partial or otherwise |
 | 5 | `fleet-commissioning-handoff` | as pairing 3, but `master-tracker-stale.csv` | `touch -d "48 hours ago" master-tracker-stale.csv` | Package renders the `> Warning: Master Tracker CSV is <N>h old...` banner |
-| 6 | `run-daily-workflow` (morning-phase Planner digest step only) | `planner-tasks-response.json` for the Graph API pull | `GRAPH_API_USER_OBJECT_ID` override + synthetic "today" 2026-07-18, both per the section above | `FIXTURE-taskId-0001` and `0005` listed, grouped by plan name; `0002` excluded (wrong assignee); `0003` excluded (due in the future); `0004` named under `Data quality flags (Planner)` |
+| 6 | `run-daily-workflow` (morning-phase Planner digest step only) | `planner-tasks-response.json` for the `planner_get_tasks` MCP tool's Graph API pull | `GRAPH_API_USER_OBJECT_ID` override + synthetic "today" 2026-07-18, both per the section above | `FIXTURE-taskId-0001` and `0005` listed, grouped by plan name; `0002` excluded (wrong assignee); `0003` excluded (due in the future); `0004` named under `Data quality flags (Planner)` |
 
 Scope note on pairing 6: it exercises only the Planner-digest step of `run-daily-workflow`'s
 morning phase. The phase's opening `check-connectors` gate and its `arriving-amr-progress`

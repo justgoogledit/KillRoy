@@ -34,9 +34,9 @@ Non-negotiables on top of the anti-patterns below:
 Wired via `.env`:
 
 - **Overmind GraphQL** -- edge-authed on Tesla corp network. Base URL template per fleet. No token in v1. Accessed through the `overmind_get_fleet_state` tool on the `kilroy-connectors` MCP server; the tool's GraphQL query is UNVERIFIED against the real schema until the first corp-network run (see `mcp-server/lib/overmind.js`).
-- **AMR Hub (`amrtracker`)** -- local dev instance at `http://localhost:5000`, unauthenticated in dev mode. Read-only for v1 (Kilroy never PATCHes gates). Accessed through the `amr_hub_get_units` tool on the `kilroy-connectors` MCP server (`mcp-server/`, registered in `.mcp.json`) -- migrated off prose-described HTTP along with Overmind and the Master Tracker CSV; Planner follows in ticket #10.
+- **AMR Hub (`amrtracker`)** -- local dev instance at `http://localhost:5000`, unauthenticated in dev mode. Read-only for v1 (Kilroy never PATCHes gates). Accessed through the `amr_hub_get_units` tool on the `kilroy-connectors` MCP server (`mcp-server/`, registered in `.mcp.json`).
 - **Sonic AMR Master Tracker** -- CSV export from SharePoint at `$MASTER_TRACKER_CSV_PATH`. Read-only. Accessed through the `master_tracker_get_rows` tool on the `kilroy-connectors` MCP server, which also carries the mtime-staleness flag downstream skills consume.
-- **Microsoft Graph / Planner** -- app-registration auth (`GRAPH_API_TENANT_ID`, `GRAPH_API_CLIENT_ID`, `GRAPH_API_CLIENT_SECRET`). Plans identified by `PLANNER_PLAN_IDS` (comma-separated, one or more). Jordan's assignee filter resolves via `GET /me` at runtime, with `GRAPH_API_USER_OBJECT_ID` as an `.env` override. Read-only.
+- **Microsoft Graph / Planner** -- app-registration auth (`GRAPH_API_TENANT_ID`, `GRAPH_API_CLIENT_ID`, `GRAPH_API_CLIENT_SECRET`). Plans identified by `PLANNER_PLAN_IDS` (comma-separated, one or more). Accessed through the `planner_get_tasks` tool on the `kilroy-connectors` MCP server; Jordan's assignee filter resolves via `GET /me` at runtime, with `GRAPH_API_USER_OBJECT_ID` as an `.env` override. Read-only. All four sources now run through tested `kilroy-connectors` tools -- no prose-described HTTP/CSV/token calls remain in any skill.
 
 Never hardcode URLs, tokens, or paths inside skills. Everything through `.env`.
 

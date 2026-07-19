@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 // Kilroy's typed MCP connector server. Read-only, stdio transport, .env-driven.
-// One tool per data source: AMR Hub now; Overmind, Master Tracker CSV, and
-// Planner follow (tickets #8-#10).
+// One tool per data source: AMR Hub, Overmind, Master Tracker CSV, Planner.
 //
 // Uses the SDK's low-level Server API with plain JSON Schema tool definitions
 // rather than the zod-based helper, to keep this repo's direct dependency
@@ -16,6 +15,7 @@ import { loadEnv } from './lib/env.js';
 import { pullAmrUnits } from './lib/amr-hub.js';
 import { pullOvermindFleetState } from './lib/overmind.js';
 import { readMasterTracker } from './lib/master-tracker.js';
+import { pullPlannerTasks } from './lib/planner.js';
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -88,6 +88,27 @@ const TOOLS = [
       additionalProperties: false,
     },
   },
+  {
+    name: 'planner_get_tasks',
+    description:
+      'Read Jordan\'s due-today Planner tasks across every plan in PLANNER_PLAN_IDS: title, ' +
+      'dueDateTime, percentComplete, grouped by plan name. Resolves the acting AAD object id from ' +
+      'GRAPH_API_USER_OBJECT_ID if set, else GET /me. Read-only. With reachabilityOnly=true, just ' +
+      'probes the first configured plan and reports any HTTP response (auth-rejected included) as ' +
+      'reachable -- check-connectors uses that mode. Fails loudly on token/network failure, non-2xx, ' +
+      'unparseable body, or missing fields; a task with a null/missing dueDateTime is never folded ' +
+      'into the due-today list or silently dropped -- it comes back as its own data-quality flag.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        reachabilityOnly: {
+          type: 'boolean',
+          description: 'If true, only probe reachability of the first configured plan; no data pull.',
+        },
+      },
+      additionalProperties: false,
+    },
+  },
 ];
 
 const server = new Server(
@@ -122,6 +143,26 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         csvPath: env.MASTER_TRACKER_CSV_PATH,
         staleWarnHours: env.MASTER_TRACKER_STALE_WARN_HOURS,
         projectIdentifier: args?.projectIdentifier,
+      });
+      return { content: [{ type: 'text', text: JSON.stringify(result) }] };
+    }
+
+    if (name === 'planner_get_tasks') {
+      const plannerReachabilityOnly = args?.reachabilityOnly;
+      if (plannerReachabilityOnly !== undefined && typeof plannerReachabilityOnly !== 'boolean') {
+        // Same hazard as overmind_get_fleet_state's reachabilityOnly: the SDK
+        // does not enforce inputSchema types, and a string "true" here would
+        // silently run the full pull (and its /me + per-plan calls) instead
+        // of the cheap probe.
+        return fail('FAIL: reachabilityOnly, when provided, must be a boolean (true/false), not a string.');
+      }
+      const result = await pullPlannerTasks({
+        tenantId: env.GRAPH_API_TENANT_ID,
+        clientId: env.GRAPH_API_CLIENT_ID,
+        clientSecret: env.GRAPH_API_CLIENT_SECRET,
+        planIdsRaw: env.PLANNER_PLAN_IDS,
+        userObjectId: env.GRAPH_API_USER_OBJECT_ID,
+        reachabilityOnly: plannerReachabilityOnly === true,
       });
       return { content: [{ type: 'text', text: JSON.stringify(result) }] };
     }

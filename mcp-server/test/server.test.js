@@ -74,7 +74,7 @@ function serveFixture() {
   });
 }
 
-test('server: lists exactly the three connector tools', async () => {
+test('server: lists exactly the four connector tools', async () => {
   const mcp = startMcp('/nonexistent/.env');
   try {
     await mcp.handshake();
@@ -82,7 +82,7 @@ test('server: lists exactly the three connector tools', async () => {
     const { result } = await mcp.recv();
     assert.deepEqual(
       result.tools.map((t) => t.name).sort(),
-      ['amr_hub_get_units', 'master_tracker_get_rows', 'overmind_get_fleet_state'],
+      ['amr_hub_get_units', 'master_tracker_get_rows', 'overmind_get_fleet_state', 'planner_get_tasks'],
     );
   } finally {
     mcp.stop();
@@ -177,6 +177,44 @@ test('server: master tracker plumbing works end to end (rows, staleness, filter,
     const { result } = await mcp2.callTool(22, 'master_tracker_get_rows', {});
     assert.equal(result.isError, true);
     assert.match(result.content[0].text, /MASTER_TRACKER_STALE_WARN_HOURS is not a positive number: "soon"/);
+  } finally {
+    mcp2.stop();
+  }
+});
+
+test('server: planner tool forwards .env vars into validation, and the reachabilityOnly boolean guard applies', async () => {
+  // No live Graph API call is exercisable from this sandbox (fixed Microsoft
+  // cloud endpoints, no test-only .env override -- see test/planner.test.js
+  // for the real HTTP-orchestration coverage against a local mock server).
+  // What's provable here without network access: env plumbing and the
+  // fail-fast validation/type-guard paths, which throw before any fetch.
+  const envFile = join(mkdtempSync(join(tmpdir(), 'kilroy-mcp-')), '.env');
+  writeFileSync(envFile, 'PLANNER_PLAN_IDS=some-plan-id\n');
+  const mcp = startMcp(envFile);
+  try {
+    await mcp.handshake();
+
+    // GRAPH_API_TENANT_ID was never set -- the lib's validation names it.
+    const missingTenant = await mcp.callTool(23, 'planner_get_tasks', {});
+    assert.equal(missingTenant.result.isError, true);
+    assert.match(missingTenant.result.content[0].text, /GRAPH_API_TENANT_ID is not set/);
+
+    // A string "true" must be rejected, not silently run the full pull.
+    const stringTrue = await mcp.callTool(24, 'planner_get_tasks', { reachabilityOnly: 'true' });
+    assert.equal(stringTrue.result.isError, true);
+    assert.match(stringTrue.result.content[0].text, /reachabilityOnly, when provided, must be a boolean/);
+  } finally {
+    mcp.stop();
+  }
+
+  const noPlanIds = join(mkdtempSync(join(tmpdir(), 'kilroy-mcp-')), '.env');
+  writeFileSync(noPlanIds, 'GRAPH_API_TENANT_ID=t\nGRAPH_API_CLIENT_ID=c\nGRAPH_API_CLIENT_SECRET=s\n');
+  const mcp2 = startMcp(noPlanIds);
+  try {
+    await mcp2.handshake();
+    const { result } = await mcp2.callTool(25, 'planner_get_tasks', {});
+    assert.equal(result.isError, true);
+    assert.match(result.content[0].text, /PLANNER_PLAN_IDS is not set/);
   } finally {
     mcp2.stop();
   }
