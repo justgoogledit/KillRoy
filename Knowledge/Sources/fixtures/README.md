@@ -16,7 +16,7 @@ mistake obvious immediately.
 
 | File | Simulates | Purpose |
 |---|---|---|
-| `amr-hub-response.json` | `GET $AMR_HUB_BASE_URL/api/amrs` (happy path, fleet `gftx-cybercab-2m-b3-agv`) | Full gate-ladder board: 12 clean units matching the design doc's 3/2/4/2/1 split, plus 1 deliberately-broken unit (13 total). |
+| `amr-hub-response.json` | The `amr_hub_get_units` MCP tool's underlying `GET $AMR_HUB_BASE_URL/api/amrs` pull (happy path, fleet `gftx-cybercab-2m-b3-agv`) | Full gate-ladder board: 12 clean units matching the design doc's 3/2/4/2/1 split, plus 1 deliberately-broken unit (13 total). |
 | `amr-hub-response-broken.json` | AMR Hub unreachable / malformed response | Deliberately invalid (truncated/corrupted) JSON. Tests that Kilroy fails loud instead of silently treating it as zero units. |
 | `master-tracker.csv` | `$MASTER_TRACKER_CSV_PATH` export (happy path) | Cross-reference source. Deliberately out of sync with the AMR Hub fixture by one row in each direction (see Edge cases below). |
 | `master-tracker-stale.csv` | Same CSV export, but stale | Byte-identical data to `master-tracker.csv`. The point of this file is its file *mtime*, not its content -- see Stale-CSV test below. |
@@ -25,21 +25,21 @@ mistake obvious immediately.
 
 ## How to dry-run a skill against these fixtures
 
-Kilroy's skills are written to call live connectors (`GET /api/amrs`, Overmind GraphQL, the CSV
+Kilroy's skills are written to call live connectors (the `amr_hub_get_units` MCP tool for AMR Hub, Overmind GraphQL, the CSV
 path in `.env`). To dry-run without live access, tell Kilroy explicitly which fixture stands in
 for which call, and to treat everything else identically -- including the `## Verify` steps. For
 example:
 
 > "Dry-run `kilroy progress gftx-cybercab-2m-b3-agv`. Read
 > `Knowledge/Sources/fixtures/amr-hub-response.json` in place of a live
-> `GET $AMR_HUB_BASE_URL/api/amrs` call, and run every other step -- including Verify -- exactly
+> `amr_hub_get_units` MCP tool call, and run every other step -- including Verify -- exactly
 > as written."
 
 For `fleet-commissioning-handoff`, name all three stand-ins:
 
 > "Dry-run `kilroy handoff gftx-cybercab-2m-b3-agv`. Use
 > `Knowledge/Sources/fixtures/overmind-fleet-state.json` in place of the Overmind GraphQL pull,
-> `Knowledge/Sources/fixtures/amr-hub-response.json` in place of `GET /api/amrs`, and
+> `Knowledge/Sources/fixtures/amr-hub-response.json` in place of the AMR Hub pull (the `amr_hub_get_units` MCP tool for `arriving-amr-progress`; `fleet-commissioning-handoff`'s own AMR Hub step is still prose-described until tickets #8-#9 migrate it), and
 > `Knowledge/Sources/fixtures/master-tracker.csv` in place of `$MASTER_TRACKER_CSV_PATH`. Run
 > Verify exactly as written, including the CSV freshness check against this file's real mtime."
 
@@ -86,9 +86,9 @@ one pairing and what each must produce.
 
 | # | Target skill | Stand-ins | Preconditions | Expected result (PASS condition) |
 |---|---|---|---|---|
-| 1 | `arriving-amr-progress` | `amr-hub-response.json` for `GET /api/amrs` | none | 3/2/4/2/1 board across the gate buckets, `T3L2_050` under `Data quality flags` (sum audit 12+1=13), all 4 blockers attributed per the gate ownership map |
-| 2 | `arriving-amr-progress` | `amr-hub-response-broken.json` for `GET /api/amrs` | none | Fails loud on the unparseable body -- no board, never a false "0 units" |
-| 3 | `fleet-commissioning-handoff` | `overmind-fleet-state.json` for the Overmind pull, `amr-hub-response.json` for `GET /api/amrs`, `master-tracker.csv` for `$MASTER_TRACKER_CSV_PATH` | `touch master-tracker.csv` to now | Package with both cross-reference findings (`T3L2_047` hub-only, `T3L2_051` CSV-only), no staleness banner |
+| 1 | `arriving-amr-progress` | `amr-hub-response.json` for the `amr_hub_get_units` MCP tool call | none | 3/2/4/2/1 board across the gate buckets, `T3L2_050` under `Data quality flags` (sum audit 12+1=13), all 4 blockers attributed per the gate ownership map |
+| 2 | `arriving-amr-progress` | `amr-hub-response-broken.json` for the `amr_hub_get_units` MCP tool call | none | Fails loud on the unparseable body -- no board, never a false "0 units" |
+| 3 | `fleet-commissioning-handoff` | `overmind-fleet-state.json` for the Overmind pull, `amr-hub-response.json` for the AMR Hub pull (still prose-described in that skill), `master-tracker.csv` for `$MASTER_TRACKER_CSV_PATH` | `touch master-tracker.csv` to now | Package with both cross-reference findings (`T3L2_047` hub-only, `T3L2_051` CSV-only), no staleness banner |
 | 4 | `fleet-commissioning-handoff` | as pairing 3, but `amr-hub-response-broken.json` | none | Fails loud at the AMR Hub pull -- no package, partial or otherwise |
 | 5 | `fleet-commissioning-handoff` | as pairing 3, but `master-tracker-stale.csv` | `touch -d "48 hours ago" master-tracker-stale.csv` | Package renders the `> Warning: Master Tracker CSV is <N>h old...` banner |
 | 6 | `run-daily-workflow` (morning-phase Planner digest step only) | `planner-tasks-response.json` for the Graph API pull | `GRAPH_API_USER_OBJECT_ID` override + synthetic "today" 2026-07-18, both per the section above | `FIXTURE-taskId-0001` and `0005` listed, grouped by plan name; `0002` excluded (wrong assignee); `0003` excluded (due in the future); `0004` named under `Data quality flags (Planner)` |

@@ -34,7 +34,7 @@ Non-negotiables on top of the anti-patterns below:
 Wired via `.env`:
 
 - **Overmind GraphQL** -- edge-authed on Tesla corp network. Base URL template per fleet. No token in v1.
-- **AMR Hub (`amrtracker`)** -- local dev instance at `http://localhost:5000`, unauthenticated in dev mode. Read-only for v1 (Kilroy never PATCHes gates).
+- **AMR Hub (`amrtracker`)** -- local dev instance at `http://localhost:5000`, unauthenticated in dev mode. Read-only for v1 (Kilroy never PATCHes gates). Accessed through the `amr_hub_get_units` tool on the `kilroy-connectors` MCP server (`mcp-server/`, registered in `.mcp.json`) -- the first connector migrated off prose-described HTTP; Overmind/CSV/Planner follow in tickets #8-#10.
 - **Sonic AMR Master Tracker** -- CSV export from SharePoint at `$MASTER_TRACKER_CSV_PATH`. Read-only.
 - **Microsoft Graph / Planner** -- app-registration auth (`GRAPH_API_TENANT_ID`, `GRAPH_API_CLIENT_ID`, `GRAPH_API_CLIENT_SECRET`). Plans identified by `PLANNER_PLAN_IDS` (comma-separated, one or more). Jordan's assignee filter resolves via `GET /me` at runtime, with `GRAPH_API_USER_OBJECT_ID` as an `.env` override. Read-only.
 
@@ -68,9 +68,9 @@ Inherited from the agentic-os starter-pack:
 
 ## Working in this repo
 
-No build, lint, or test tooling. This repo is prose and markdown -- `SKILL.md` files, `Knowledge/*.md`, generated `Projects/*.md` reports. Nothing to compile or run.
+Almost entirely prose and markdown -- `SKILL.md` files, `Knowledge/*.md`, generated `Projects/*.md` reports -- with one deliberate exception: `mcp-server/`, the typed connector server (plain Node.js, no TypeScript, no bundler). That directory is the only place with real code and the only build/test tooling in the repo: `cd mcp-server && npm install && npm test` (Node's built-in `node:test`, no test-framework dependency). Its tests run against the same `Knowledge/Sources/fixtures/` files the skills dry-run against -- one source of truth for both.
 
-- **Verification is per-skill, not a global test suite.** Every `Skills/*/SKILL.md` has its own `## Verify` section -- a checklist run after executing that skill (sum audits, fact-traceability checks, fail-loud confirmations). That's the closest thing to "tests" here.
+- **Verification is per-skill, not a global test suite.** Every `Skills/*/SKILL.md` has its own `## Verify` section -- a checklist run after executing that skill (sum audits, fact-traceability checks, fail-loud confirmations). That's the closest thing to "tests" for the prose side; `mcp-server/` has real `node:test` tests on top.
 - **Dry-run a skill without live connectors** using `Knowledge/Sources/fixtures/` -- synthetic AMR Hub, Overmind, Master Tracker CSV, and Planner/Graph API data, including a deliberately-broken response for exercising the fail-loud path. See its `README.md` for the exact invocation pattern, or run [[Skills/verify-fixtures/SKILL|verify-fixtures]] to dry-run every documented pairing (or just one skill's) in a single step instead of by hand.
 - **`.claude/hooks/session-start.sh`** runs a fast connector-reachability probe on every session start (registered in `.claude/settings.json`) -- a lightweight heads-up, not a replacement for the full `check-connectors` skill.
 - **Skill file shape:** every `SKILL.md` follows the same template -- frontmatter, When to use, Applies, Steps, Verify, Output template, Examples, Anti-patterns. See `Skills/skill-creator/SKILL.md` for the canonical version before adding or editing a skill.

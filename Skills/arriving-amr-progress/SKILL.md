@@ -23,13 +23,14 @@ Track each incoming AMR's climb through the buyoff-gate ladder (220 -> 250 -> 27
 ## Applies
 
 - [[Knowledge/Sources/2026-07-02-pc-amr-gates|Gate ownership map]] -- authoritative source for which team owns each gate. Kilroy uses this to attribute blockers.
+- `kilroy-connectors` MCP server (`mcp-server/`, registered in `.mcp.json`) -- source of the unit data via its `amr_hub_get_units` tool; its `node:test` suite is what proves the pull's fail-loud contract.
 - [[Knowledge/Personal/voice]] -- board output opens with the "was here" signature; see its "Humanizer pass on packaged outputs" section.
 - [[Knowledge/Personal/preferences]] -- short, concrete, one recommendation with reason.
 - `humanizer` skill (`~/.claude/skills/humanizer`) -- run on the prose portions only (step 5).
 
 ## Steps
 
-1. Read AMR Hub via `GET $AMR_HUB_BASE_URL/api/amrs`. If Jordan named a fleet, filter to that fleet's units; otherwise include every unit Kilroy sees.
+1. Read AMR Hub via the `amr_hub_get_units` tool on the `kilroy-connectors` MCP server (it reads `AMR_HUB_BASE_URL` from `.env` itself). If Jordan named a fleet, pass it as `fleetId`; otherwise omit it to get every unit Kilroy sees. The tool fails loudly (a specific error, never an empty list) when the Hub is unreachable or the response is malformed -- if it errors, stop and report per `CLAUDE.md`'s fail-loud rule; if it returns `unitCount: 0` with a `fleetId` filter but a non-zero `totalUnitCount`, say the filter matched nothing rather than rendering an empty board as if the fleet were real and idle. If the MCP server isn't available in the session, stop and say so -- don't fall back to a hand-rolled HTTP call.
 2. For each unit extract:
    - `buyoff220Status`, `buyoff250Status`, `buyoff270Status`, `buyoff280Status`
    - Corresponding `*BlockedReason` fields (populated only when the gate is blocked)

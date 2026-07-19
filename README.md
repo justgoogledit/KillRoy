@@ -15,6 +15,7 @@ cp .env.example .env
 # Edit .env -- fill Overmind base template, AMR Hub URL, Master Tracker CSV path,
 # and the Graph API app registration (tenant/client ID + secret) plus
 # PLANNER_PLAN_IDS for the Planner digest
+(cd mcp-server && npm install)   # one-time: the typed connector server's dependency
 claude
 ```
 
@@ -34,6 +35,7 @@ Then run one of:
 ## Prerequisites
 
 - Claude Code installed.
+- Node.js 18+ (for the `kilroy-connectors` MCP server in `mcp-server/` -- run `npm install` there once; `npm test` runs its fixture-backed test suite).
 - On Tesla corp network for Overmind reads.
 - Local `amrtracker` (AMR Hub) running on `http://localhost:5000` in dev mode.
 - A local CSV export of the Sonic AMR Master Tracker xlsx at a path referenced by `$MASTER_TRACKER_CSV_PATH`.

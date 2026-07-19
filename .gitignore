@@ -9,3 +9,6 @@ Thumbs.db
 # skills/ is mattpocock/skills, pulled in for skill-authoring reference.
 # It has its own git history; Kilroy has no cross-repo skill imports (see design doc).
 skills/
+
+# MCP connector server dependencies (package-lock.json IS committed, for reproducible installs)
+mcp-server/node_modules/
