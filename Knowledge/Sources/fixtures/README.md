@@ -97,7 +97,9 @@ Scope note on pairing 6: it exercises only the Planner-digest step of `run-daily
 morning phase. The phase's opening `check-connectors` gate and its `arriving-amr-progress`
 sub-run are deliberately out of this pairing's scope -- the former is a live-reachability check
 with no fixture stand-in (it correctly FAILs in a sandbox with no `.env`, which would stop the
-phase before the digest), and the latter is already covered directly by pairings 1-2.
+phase before the digest), and the latter is already covered directly by pairings 1-2. The phase's
+log-append step (the step-5 entry and its `kilroy-log` companion, audited by `run-daily-workflow`
+Verify item 10) is likewise out of this pairing's scope -- the digest step never reaches it.
 
 ## Deliberate edge cases baked in
 

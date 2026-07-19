@@ -4,7 +4,7 @@ Append-only index. Entries are written by the log-append step of a skill (`sessi
 
 Prose format: `## [YYYY-MM-DD] <type> | <summary>`
 
-Types: `lesson`, `setup`, `source`, `project` (session-recap and hand-written entries), plus the skill event types `progress`, `handoff`, `daily`.
+Types: `lesson`, `setup`, `source`, `project` (session-recap, hand-written entries, and the check-connectors/verify-fixtures failure entries, which use `setup`), plus the skill event types `progress`, `handoff`, `daily`.
 
 This file is how future sessions discover that something happened without reading every file in `Knowledge/Lessons/`.
 
@@ -20,12 +20,12 @@ Rules:
 - The four core fields come first, in that order: `date`, `skill` (the emitting skill's name), `event`, `status`. Event-specific fields follow; each skill's own log-append step defines its exact field set.
 - Keys are lowercase, underscore-separated. Values contain no spaces: lists are comma-separated, names/slugs hyphenated. Free text (reasons, blocker quotes) stays in the prose line; the structured line carries only enumerable or countable fields.
 - `status` semantics: `fail` on failure-only entries (`connector-check`, `fixture-check`, which log nothing on a green run); `warn` when the run completed but surfaced a WARN banner or data-quality flag; `ok` otherwise.
-- Hand-written entries don't need the line. Entries predating 2026-07-19 don't have one; do not retrofit them -- this file is append-only.
+- Hand-written entries don't need the line. Entries from before this contract existed (everything up to and including the 2026-07-19 adversarial-review entry) don't have one; do not retrofit them -- this file is append-only.
 
-Grep contract: every structured line matches the fixed string `kilroy-log`. Examples:
+Grep contract: every companion line starts its physical line with `<!-- kilroy-log ` -- anchor greps to that (`^<!-- kilroy-log`) so prose mentions of the format, including this header's own examples, never false-positive. Examples:
 
-- How often has the connector check failed? `grep -c 'kilroy-log.*event=connector-check' log.md`
-- Every non-green skill run: `grep 'kilroy-log' log.md | grep -v 'status=ok'`
+- How often has the connector check failed? `grep -c '^<!-- kilroy-log .*event=connector-check' log.md`
+- Every non-green skill run: `grep '^<!-- kilroy-log' log.md | grep -v 'status=ok'`
 
 ---
 

@@ -3,7 +3,9 @@ name: session-recap
 type: foundational
 trigger: end of a working session, OR explicit "/recap"
 inputs: the conversation/transcript of the current session
-outputs: Knowledge/Lessons/YYYY-MM-DD-<slug>.md
+outputs:
+  - Knowledge/Lessons/YYYY-MM-DD-<slug>.md
+  - log.md append (prose line + structured `kilroy-log` companion line, per log.md's header contract)
 ---
 
 # session-recap
