@@ -37,7 +37,7 @@ Scaffolds new skills so they all follow the same shape and don't overlap.
 7. Add 1 good and 1 bad example.
 8. List anti-patterns.
 9. Add the skill to `Skills/Skills.md` under the right section.
-10. Run [[Skills/verify-fixtures/SKILL|verify-fixtures]], scoped to the skill just created or edited (pass its name as the target-skill input). If it has no fixture pairings documented in `Knowledge/Sources/fixtures/README.md` -- true for most foundational skills, including this one -- verify-fixtures reports that explicitly; that counts as a pass. A FAIL blocks: fix the skill (or the fixture, if the fixture is what's wrong) and re-run before continuing. Do not consider the edit done on a FAIL.
+10. Run [[Skills/verify-fixtures/SKILL|verify-fixtures]], scoped to the skill just created or edited (pass its name as the target-skill input). If it has no fixture pairings documented in `Knowledge/Sources/fixtures/README.md` -- true for most foundational skills, including this one -- verify-fixtures reports that explicitly; that counts as a pass. A FAIL blocks: fix the skill (or the fixture, if the fixture is what's wrong) and re-run before continuing. Do not consider the edit done on a FAIL. Exception to the scoping: if the edit touched anything under `Knowledge/Sources/fixtures/` (a fixture file or the README), run verify-fixtures unscoped instead -- the orphaned-fixture coverage check only runs on unscoped invocations, and it's the only thing that catches a fixture added without a README entry.
 11. Print the diff for review before committing.
 
 ## Canonical SKILL.md template

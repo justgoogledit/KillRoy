@@ -77,6 +77,28 @@ assigned to a task that is due today but is **not** Jordan's -- this is the "ass
 else" case used to test that the assignment filter actually filters (see Deliberate edge cases
 below). It is not a value you set in `.env`; it exists only inside the fixture to be filtered out.
 
+## Fixture-skill pairings (the canonical list)
+
+The table below is the authoritative enumeration of fixture-skill pairings -- the unit of account
+for [[Skills/verify-fixtures/SKILL|verify-fixtures]] and for anyone hand-running the matrix. The
+blockquote invocations above give each pairing's exact wording; this table settles what counts as
+one pairing and what each must produce.
+
+| # | Target skill | Stand-ins | Preconditions | Expected result (PASS condition) |
+|---|---|---|---|---|
+| 1 | `arriving-amr-progress` | `amr-hub-response.json` for `GET /api/amrs` | none | 3/2/4/2/1 board across the gate buckets, `T3L2_050` under `Data quality flags` (sum audit 12+1=13), all 4 blockers attributed per the gate ownership map |
+| 2 | `arriving-amr-progress` | `amr-hub-response-broken.json` for `GET /api/amrs` | none | Fails loud on the unparseable body -- no board, never a false "0 units" |
+| 3 | `fleet-commissioning-handoff` | `overmind-fleet-state.json` for the Overmind pull, `amr-hub-response.json` for `GET /api/amrs`, `master-tracker.csv` for `$MASTER_TRACKER_CSV_PATH` | `touch master-tracker.csv` to now | Package with both cross-reference findings (`T3L2_047` hub-only, `T3L2_051` CSV-only), no staleness banner |
+| 4 | `fleet-commissioning-handoff` | as pairing 3, but `amr-hub-response-broken.json` | none | Fails loud at the AMR Hub pull -- no package, partial or otherwise |
+| 5 | `fleet-commissioning-handoff` | as pairing 3, but `master-tracker-stale.csv` | `touch -d "48 hours ago" master-tracker-stale.csv` | Package renders the `> Warning: Master Tracker CSV is <N>h old...` banner |
+| 6 | `run-daily-workflow` (morning-phase Planner digest step only) | `planner-tasks-response.json` for the Graph API pull | `GRAPH_API_USER_OBJECT_ID` override + synthetic "today" 2026-07-18, both per the section above | `FIXTURE-taskId-0001` and `0005` listed, grouped by plan name; `0002` excluded (wrong assignee); `0003` excluded (due in the future); `0004` named under `Data quality flags (Planner)` |
+
+Scope note on pairing 6: it exercises only the Planner-digest step of `run-daily-workflow`'s
+morning phase. The phase's opening `check-connectors` gate and its `arriving-amr-progress`
+sub-run are deliberately out of this pairing's scope -- the former is a live-reachability check
+with no fixture stand-in (it correctly FAILs in a sandbox with no `.env`, which would stop the
+phase before the digest), and the latter is already covered directly by pairings 1-2.
+
 ## Deliberate edge cases baked in
 
 1. **Null-field unit (`T3L2_050` in `amr-hub-response.json`)** -- `buyoff250Status` is JSON

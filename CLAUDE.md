@@ -10,13 +10,13 @@ Named after "Kilroy was here" -- the WWII engineer-graffiti figure that appeared
 
 ## Scope
 
-Three workflows, plus one foundational check that gates them:
+Three workflows, plus two foundational checks (one gates runtime data pulls, one gates skill edits):
 
 1. [[Skills/fleet-commissioning-handoff/SKILL|fleet-commissioning-handoff]] -- package a fleet's commissioning state for line-side ops.
 2. [[Skills/arriving-amr-progress/SKILL|arriving-amr-progress]] -- track incoming AMRs across the 5-gate ladder, attribute blockers to the team whose action unblocks them.
 3. [[Skills/run-daily-workflow/SKILL|run-daily-workflow]] -- day runner. Morning brief, midday delta, end-of-day close-out and carry-overs. Orchestrates the two skills above into Jordan's daily loop. Runs proactively on a schedule -- see its "Proactive invocation" section.
 
-Plus [[Skills/check-connectors/SKILL|check-connectors]] (foundational, like `skill-creator`/`session-recap`) -- verifies `.env` and all four data sources before any workflow above pulls real data. Doesn't count against the anti-sprawl rule below; it's infrastructure, not a fourth Jordan-facing workflow.
+Plus [[Skills/check-connectors/SKILL|check-connectors]] (foundational, like `skill-creator`/`session-recap`) -- verifies `.env` and all four data sources before any workflow above pulls real data. And [[Skills/verify-fixtures/SKILL|verify-fixtures]] (same tier) -- dry-runs every documented fixture-skill pairing and reports pass/fail; it gates skill edits via `skill-creator`'s process, not runtime data pulls. Neither counts against the anti-sprawl rule below; they're infrastructure, not Jordan-facing workflows.
 
 Anything outside this scope: flag it, don't sprawl. Runtime ops and live troubleshooting are out of scope for Kilroy -- route those questions to the `overmind` MCP (`AskOvermind`), which already does live GraphQL investigation against a fleet plus reads the fleet-manager repo for context. `fleet-monitor` / `fleet-troubleshooter` / `shift-handoff` are placeholder names for possible future dedicated agents at `~/.claude/agents/` -- they don't exist yet. Don't assume they do; build one only after hitting the same runtime-ops gap 3+ times that `overmind` doesn't cover.
 
