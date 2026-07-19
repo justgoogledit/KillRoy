@@ -39,6 +39,7 @@ export async function pullPlannerTasks({
   now = Date.now(),
   graphBaseUrl = GRAPH_BASE_URL,
   tokenUrlBase = TOKEN_URL_BASE,
+  timeoutMs = 15000,
 }) {
   if (!tenantId) {
     throw new Error('GRAPH_API_TENANT_ID is not set or empty. Fill it in .env (see .env.example).');
@@ -56,8 +57,6 @@ export async function pullPlannerTasks({
   if (planIds.length === 0) {
     throw new Error(`PLANNER_PLAN_IDS has no usable plan ids after parsing: "${planIdsRaw}". Fix it in .env (see .env.example).`);
   }
-
-  const timeoutMs = 15000;
 
   const tokenUrl = `${tokenUrlBase}/${tenantId}/oauth2/v2.0/token`;
   let tokenRes;
@@ -126,7 +125,7 @@ export async function pullPlannerTasks({
   } catch (cause) {
     throw new Error(`Microsoft Graph token response at ${tokenUrl} is not valid JSON (${cause.message}). Refusing to guess.`, { cause });
   }
-  const accessToken = tokenBody.access_token;
+  const accessToken = tokenBody?.access_token;
   if (typeof accessToken !== 'string' || accessToken === '') {
     throw new Error(`Microsoft Graph token response at ${tokenUrl} has no "access_token" field. Unexpected shape -- refusing to guess.`);
   }
@@ -155,7 +154,7 @@ export async function pullPlannerTasks({
     } catch (cause) {
       throw new Error(`Microsoft Graph /me response at ${meUrl} is not valid JSON (${cause.message}). Refusing to guess.`, { cause });
     }
-    if (typeof meBody.id !== 'string' || meBody.id === '') {
+    if (typeof meBody?.id !== 'string' || meBody.id === '') {
       throw new Error(`Microsoft Graph /me response at ${meUrl} has no "id" field. Unexpected shape -- refusing to guess.`);
     }
     resolvedUserId = meBody.id;
@@ -184,7 +183,7 @@ export async function pullPlannerTasks({
     } catch (cause) {
       throw new Error(`Microsoft Graph plan lookup at ${planUrl} (planId=${planId}) is not valid JSON (${cause.message}). Refusing to guess.`, { cause });
     }
-    if (typeof planBody.title !== 'string' || planBody.title === '') {
+    if (typeof planBody?.title !== 'string' || planBody.title === '') {
       throw new Error(`Microsoft Graph plan lookup at ${planUrl} (planId=${planId}) has no "title" field. Unexpected shape -- refusing to guess.`);
     }
 
@@ -206,7 +205,7 @@ export async function pullPlannerTasks({
     } catch (cause) {
       throw new Error(`Microsoft Graph tasks response at ${tasksUrl} (planId=${planId}) is not valid JSON (${cause.message}). Refusing to guess.`, { cause });
     }
-    const tasks = tasksBody.value;
+    const tasks = tasksBody?.value;
     if (!Array.isArray(tasks)) {
       throw new Error(`Microsoft Graph tasks response at ${tasksUrl} (planId=${planId}) has no "value" array. Unexpected shape -- refusing to guess.`);
     }
@@ -217,6 +216,13 @@ export async function pullPlannerTasks({
 
     const dueToday = [];
     for (const task of mine) {
+      // id/title are the task's identifying fields -- a real plannerTask
+      // always carries both. A hole here would otherwise serialize away
+      // silently (JSON.stringify drops undefined keys), the opposite of the
+      // dueDateTime handling below, which turns a defect into an explicit flag.
+      if (typeof task.id !== 'string' || task.id === '' || typeof task.title !== 'string') {
+        throw new Error(`Microsoft Graph tasks response at ${tasksUrl} (planId=${planId}) contains a task with a missing "id" or "title" field. Unexpected shape -- refusing to guess.`);
+      }
       if (task.dueDateTime === null || task.dueDateTime === undefined) {
         dataQualityFlags.push({
           id: task.id, title: task.title, planId, planName: planBody.title,

@@ -258,6 +258,175 @@ test('full pull fail loud: a tasks response with no "value" array refuses to gue
   }
 });
 
+// A flexible single-endpoint server for exercising individual response
+// bodies in isolation (a literal JSON `null`, an HTML SSO-redirect page,
+// a malformed task) while every other endpoint stays on a valid default.
+function serveGraphRaw({
+  tokenBody = JSON.stringify({ access_token: 'tok' }),
+  meBody = JSON.stringify({ id: JORDAN }),
+  planBody = JSON.stringify({ title: 'Some Plan' }),
+  tasksBody = JSON.stringify({ value: [] }),
+} = {}) {
+  const httpd = createServer((req, res) => {
+    const url = new URL(req.url, 'http://localhost');
+    res.writeHead(200, { 'content-type': 'application/json' });
+    if (req.method === 'POST' && url.pathname.endsWith('/oauth2/v2.0/token')) {
+      res.end(tokenBody);
+    } else if (url.pathname === '/v1.0/me') {
+      res.end(meBody);
+    } else if (url.pathname.endsWith('/tasks')) {
+      res.end(tasksBody);
+    } else {
+      res.end(planBody);
+    }
+  });
+  return new Promise((resolve) => {
+    httpd.listen(0, '127.0.0.1', () => {
+      const { port } = httpd.address();
+      resolve({
+        graphBaseUrl: `http://127.0.0.1:${port}/v1.0`,
+        tokenUrlBase: `http://127.0.0.1:${port}`,
+        close: () => new Promise((r) => httpd.close(r)),
+      });
+    });
+  });
+}
+
+test('full pull fail loud: a literal JSON null token response body is refused, not a raw TypeError', async () => {
+  const srv = await serveGraphRaw({ tokenBody: 'null' });
+  try {
+    await assert.rejects(
+      pullPlannerTasks({
+        tenantId: 'tid', clientId: 'cid', clientSecret: 'secret',
+        planIdsRaw: PLAN_A, userObjectId: JORDAN,
+        graphBaseUrl: srv.graphBaseUrl, tokenUrlBase: srv.tokenUrlBase,
+      }),
+      (err) => {
+        assert.match(err.message, /has no "access_token" field/);
+        assert.doesNotMatch(err.message, /Cannot read propert/);
+        return true;
+      },
+    );
+  } finally {
+    await srv.close();
+  }
+});
+
+test('full pull fail loud: a literal JSON null /me response body is refused, not a raw TypeError', async () => {
+  const srv = await serveGraphRaw({ meBody: 'null' });
+  try {
+    await assert.rejects(
+      pullPlannerTasks({
+        tenantId: 'tid', clientId: 'cid', clientSecret: 'secret', planIdsRaw: PLAN_A,
+        graphBaseUrl: srv.graphBaseUrl, tokenUrlBase: srv.tokenUrlBase,
+      }),
+      (err) => {
+        assert.match(err.message, /\/me response .* has no "id" field/);
+        assert.doesNotMatch(err.message, /Cannot read propert/);
+        return true;
+      },
+    );
+  } finally {
+    await srv.close();
+  }
+});
+
+test('full pull fail loud: a literal JSON null plan-lookup response body is refused, not a raw TypeError', async () => {
+  const srv = await serveGraphRaw({ planBody: 'null' });
+  try {
+    await assert.rejects(
+      pullPlannerTasks({
+        tenantId: 'tid', clientId: 'cid', clientSecret: 'secret',
+        planIdsRaw: PLAN_A, userObjectId: JORDAN,
+        graphBaseUrl: srv.graphBaseUrl, tokenUrlBase: srv.tokenUrlBase,
+      }),
+      (err) => {
+        assert.match(err.message, /plan lookup .* has no "title" field/);
+        assert.doesNotMatch(err.message, /Cannot read propert/);
+        return true;
+      },
+    );
+  } finally {
+    await srv.close();
+  }
+});
+
+test('full pull fail loud: a literal JSON null tasks-pull response body is refused, not a raw TypeError', async () => {
+  const srv = await serveGraphRaw({ tasksBody: 'null' });
+  try {
+    await assert.rejects(
+      pullPlannerTasks({
+        tenantId: 'tid', clientId: 'cid', clientSecret: 'secret',
+        planIdsRaw: PLAN_A, userObjectId: JORDAN,
+        graphBaseUrl: srv.graphBaseUrl, tokenUrlBase: srv.tokenUrlBase,
+      }),
+      (err) => {
+        assert.match(err.message, /has no "value" array/);
+        assert.doesNotMatch(err.message, /Cannot read propert/);
+        return true;
+      },
+    );
+  } finally {
+    await srv.close();
+  }
+});
+
+test('full pull fail loud: a task missing "id" or "title" is refused rather than silently serialized with a hole', async () => {
+  const srv = await serveGraphRaw({
+    tasksBody: JSON.stringify({
+      value: [{ title: 'No id field', dueDateTime: '2026-07-18T05:00:00Z', assignments: { [JORDAN]: {} } }],
+    }),
+  });
+  try {
+    await assert.rejects(
+      pullPlannerTasks({
+        tenantId: 'tid', clientId: 'cid', clientSecret: 'secret',
+        planIdsRaw: PLAN_A, userObjectId: JORDAN, now: TODAY_MS,
+        graphBaseUrl: srv.graphBaseUrl, tokenUrlBase: srv.tokenUrlBase,
+      }),
+      /missing "id" or "title" field/,
+    );
+  } finally {
+    await srv.close();
+  }
+});
+
+test('full pull fail loud: an HTML SSO-redirect body instead of JSON is refused, not silently guessed', async () => {
+  const srv = await serveGraphRaw({ planBody: '<html>corp sso redirect</html>' });
+  try {
+    await assert.rejects(
+      pullPlannerTasks({
+        tenantId: 'tid', clientId: 'cid', clientSecret: 'secret',
+        planIdsRaw: PLAN_A, userObjectId: JORDAN,
+        graphBaseUrl: srv.graphBaseUrl, tokenUrlBase: srv.tokenUrlBase,
+      }),
+      /plan lookup .* is not valid JSON .*Refusing to guess/s,
+    );
+  } finally {
+    await srv.close();
+  }
+});
+
+test('fail loud: a hang-forever token endpoint times out rather than hanging', async () => {
+  const httpd = createServer(() => {}); // never responds
+  await new Promise((resolve) => httpd.listen(0, '127.0.0.1', resolve));
+  const { port } = httpd.address();
+  try {
+    await assert.rejects(
+      pullPlannerTasks({
+        tenantId: 'tid', clientId: 'cid', clientSecret: 'secret', planIdsRaw: PLAN_A,
+        graphBaseUrl: `http://127.0.0.1:${port}/v1.0`,
+        tokenUrlBase: `http://127.0.0.1:${port}`,
+        timeoutMs: 200,
+      }),
+      /token endpoint unreachable/,
+    );
+  } finally {
+    httpd.closeAllConnections();
+    await new Promise((r) => httpd.close(r));
+  }
+});
+
 test('validation: missing tenantId, clientId, clientSecret, and planIdsRaw are each named', async () => {
   await assert.rejects(
     pullPlannerTasks({ tenantId: '', clientId: 'c', clientSecret: 's', planIdsRaw: 'p' }),
