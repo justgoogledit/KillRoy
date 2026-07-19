@@ -15,6 +15,7 @@ import { fileURLToPath } from 'node:url';
 import { loadEnv } from './lib/env.js';
 import { pullAmrUnits } from './lib/amr-hub.js';
 import { pullOvermindFleetState } from './lib/overmind.js';
+import { readMasterTracker } from './lib/master-tracker.js';
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -66,6 +67,27 @@ const TOOLS = [
       additionalProperties: false,
     },
   },
+  {
+    name: 'master_tracker_get_rows',
+    description:
+      'Read the Sonic AMR Master Tracker CSV export at MASTER_TRACKER_CSV_PATH: per-unit ' +
+      'pipelineStatus, etaAtFactory, projectIdentifier, vendorRef, hardwareRevision. Read-only. ' +
+      'The result carries mtime-based staleness info (stale=true past ' +
+      'MASTER_TRACKER_STALE_WARN_HOURS) as a WARN-grade flag -- staleness never blocks the read. ' +
+      'Fails loudly (never an empty row list) on a missing/unreadable file or headerless body. ' +
+      'Optionally filters rows to one projectIdentifier (fleet).',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        projectIdentifier: {
+          type: 'string',
+          description:
+            'Optional fleet id to filter rows by the projectIdentifier column. Omit for every row.',
+        },
+      },
+      additionalProperties: false,
+    },
+  },
 ];
 
 const server = new Server(
@@ -93,6 +115,17 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   const fleetId = args?.fleetId;
 
   try {
+    if (name === 'master_tracker_get_rows') {
+      // The lib validates the path, threshold, and filter itself and throws
+      // with specific reasons; staleness comes back as a flag, not an error.
+      const result = readMasterTracker({
+        csvPath: env.MASTER_TRACKER_CSV_PATH,
+        staleWarnHours: env.MASTER_TRACKER_STALE_WARN_HOURS,
+        projectIdentifier: args?.projectIdentifier,
+      });
+      return { content: [{ type: 'text', text: JSON.stringify(result) }] };
+    }
+
     if (name === 'amr_hub_get_units') {
       if (fleetId !== undefined && (typeof fleetId !== 'string' || fleetId.trim() === '')) {
         // An empty/blank fleetId is a caller bug, not "no filter" -- silently

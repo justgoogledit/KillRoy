@@ -21,17 +21,17 @@ Package a single fleet's current commissioning state into a markdown artifact Jo
 ## Applies
 
 - [[Knowledge/Sources/2026-07-02-pc-amr-gates|Gate ownership map]] -- 220/250/270/280/290 -> owning team.
-- `kilroy-connectors` MCP server (`mcp-server/`, registered in `.mcp.json`) -- source of the Overmind fleet state (`overmind_get_fleet_state`) and the AMR Hub unit data (`amr_hub_get_units`); its `node:test` suite proves both pulls' fail-loud contracts. The Master Tracker CSV read stays prose-described until ticket #9 migrates it.
+- `kilroy-connectors` MCP server (`mcp-server/`, registered in `.mcp.json`) -- source of all three of this skill's pulls: Overmind fleet state (`overmind_get_fleet_state`), AMR Hub unit data (`amr_hub_get_units`), and Master Tracker rows (`master_tracker_get_rows`); its `node:test` suite proves each pull's fail-loud contract.
 - [[Knowledge/Personal/voice]] -- packaged outputs open with the "was here" signature; see its "Humanizer pass on packaged outputs" section for the precedence rule below.
 - [[Knowledge/Personal/preferences]] -- one recommendation with reason; concrete over abstract.
 - `humanizer` skill (`~/.claude/skills/humanizer`) -- run on the drafted package before finalizing (step 6).
 
 ## Steps
 
-1. Resolve the fleet name. Confirm it appears in the Master Tracker CSV (`$MASTER_TRACKER_CSV_PATH`, column `projectIdentifier` or equivalent). If not, stop and ask Jordan.
+1. Resolve the fleet name. Confirm it appears in the Master Tracker via the `master_tracker_get_rows` tool (filter by `projectIdentifier` = the candidate fleet; a `rowCount` of 0 with a non-zero `totalRowCount` means the tracker doesn't know this fleet). If not found, stop and ask Jordan.
 2. Pull the fleet's Overmind state via the `overmind_get_fleet_state` tool on the `kilroy-connectors` MCP server (full mode, `fleetId` = the resolved fleet): image tag, robot count, tracer events, MFS wiring, `RobotConfigs.yaml` deltas. The tool substitutes `{fleet}` into `OVERMIND_BASE_URL_TEMPLATE` itself and fails loud -- naming the syscall code, HTTP status, GraphQL error, or missing field -- rather than ever returning partial state; if it errors, stop and report per `CLAUDE.md`'s fail-loud rule. Note the tool's GraphQL query is marked UNVERIFIED against the real schema until the first corp-network run (see `mcp-server/lib/overmind.js`) -- a schema-mismatch error there is the tool working, not a Kilroy bug.
 3. Pull AMR Hub gate data via the `amr_hub_get_units` tool on the same server, passing this fleet as `fleetId`. For each unit extract `buyoff220Status`, `buyoff250Status`, `buyoff270Status`, `buyoff280Status`, corresponding `*BlockedReason` fields, and `updatedAt`. Derive `production-ready` = all 4 gates `= Complete`. The tool fails loud on an unreachable Hub or malformed response (never an empty list) -- if it errors, stop and report; if `unitCount` is 0 with a non-zero `totalUnitCount`, the fleet filter matched nothing -- say so rather than packaging an empty fleet as real. No hand-rolled HTTP fallback if the MCP server is missing.
-4. Read the Master Tracker CSV. Extract per-unit `pipelineStatus`, `etaAtFactory`, `projectIdentifier`, `vendorRef`, `hardwareRevision` for units in this fleet.
+4. Reuse the `master_tracker_get_rows` result from step 1 (same filter). Extract per-unit `pipelineStatus`, `etaAtFactory`, `projectIdentifier`, `vendorRef`, `hardwareRevision` for units in this fleet. The tool fails loud on a missing/unreadable file or headerless body (never an empty row list) -- if it errored back in step 1, this run already stopped there. Its `stale`/`ageHours` fields drive Verify step 4's freshness banner. No hand-rolled CSV read if the MCP server is missing.
 5. Cross-reference:
    - Units listed in Master Tracker but not in AMR Hub -> flag as "incoming, not yet ingested."
    - Units in AMR Hub but not in Master Tracker -> flag as "in dashboard, no upstream record" (possible data-entry gap).
@@ -49,7 +49,7 @@ Before handing the package back to Jordan:
    Confirm both quotes appear verbatim in the raw response payloads.
 2. **Sum audit**: total unit count in the handoff = the `unitCount` reported by the `amr_hub_get_units` tool result for this fleet (with `totalUnitCount` as the cross-check that the filter itself saw the full Hub). No unit falls off.
 3. **No fabricated IDs**: every robot ID mentioned in the handoff appears in the Overmind payload, the AMR Hub payload, or the Master Tracker CSV. (The CSV is a valid source here, not just AMR Hub/Overmind -- step 5's "incoming, not yet ingested" finding necessarily cites a unit that exists only in the Master Tracker CSV.)
-4. **CSV freshness**: if the Master Tracker CSV's `mtime` is older than `$MASTER_TRACKER_STALE_WARN_HOURS`, include a `> Warning: Master Tracker CSV is <N>h old. Re-export before final handoff.` line at the top of the package.
+4. **CSV freshness**: if the `master_tracker_get_rows` result reports `stale: true`, include a `> Warning: Master Tracker CSV is <N>h old. Re-export before final handoff.` line at the top of the package, with `<N>` = the result's `ageHours`.
 5. **Humanizer didn't touch facts**: re-run steps 1-3 above against the post-humanizer version, not just the draft. A rewrite pass can smooth phrasing in a way that loosens a specific number, drops a unit ID, or rephrases a blocker reason into something vaguer -- confirm none of that happened before delivering.
 6. **Structured line audit**: the `kilroy-log` companion line sits on the line immediately after the prose log line and follows `log.md`'s header contract; its `ready`/`total`/`open` values match the package's own counts, and `status=warn` if and only if the staleness banner from Verify step 4 is present.
 

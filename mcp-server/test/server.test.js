@@ -82,7 +82,7 @@ test('server: lists exactly the two connector tools', async () => {
     const { result } = await mcp.recv();
     assert.deepEqual(
       result.tools.map((t) => t.name).sort(),
-      ['amr_hub_get_units', 'overmind_get_fleet_state'],
+      ['amr_hub_get_units', 'master_tracker_get_rows', 'overmind_get_fleet_state'],
     );
   } finally {
     mcp.stop();
@@ -137,6 +137,48 @@ test('server: overmind reachability + full-pull plumbing works end to end', asyn
   } finally {
     mcp.stop();
     await new Promise((r) => httpd.close(r));
+  }
+});
+
+test('server: master tracker plumbing works end to end (rows, staleness, filter, bad threshold)', async () => {
+  const fixtureCsv = join(
+    dirname(fileURLToPath(import.meta.url)), '..', '..', 'Knowledge', 'Sources', 'fixtures', 'master-tracker.csv',
+  );
+  const envFile = join(mkdtempSync(join(tmpdir(), 'kilroy-mcp-')), '.env');
+  writeFileSync(
+    envFile,
+    `MASTER_TRACKER_CSV_PATH=${fixtureCsv}\nMASTER_TRACKER_STALE_WARN_HOURS=24\n`,
+  );
+  const mcp = startMcp(envFile);
+  try {
+    await mcp.handshake();
+    const all = await mcp.callTool(20, 'master_tracker_get_rows', {});
+    assert.ok(!all.result.isError);
+    const data = JSON.parse(all.result.content[0].text);
+    assert.equal(data.totalRowCount, 13);
+    assert.equal(typeof data.stale, 'boolean');
+    assert.equal(data.staleWarnHours, 24);
+
+    const filtered = await mcp.callTool(21, 'master_tracker_get_rows', {
+      projectIdentifier: 'gftx-kyle-2r-seats-agv',
+    });
+    const fData = JSON.parse(filtered.result.content[0].text);
+    assert.equal(fData.rowCount, 0);
+    assert.equal(fData.totalRowCount, 13);
+  } finally {
+    mcp.stop();
+  }
+
+  const badEnv = join(mkdtempSync(join(tmpdir(), 'kilroy-mcp-')), '.env');
+  writeFileSync(badEnv, `MASTER_TRACKER_CSV_PATH=${fixtureCsv}\nMASTER_TRACKER_STALE_WARN_HOURS=soon\n`);
+  const mcp2 = startMcp(badEnv);
+  try {
+    await mcp2.handshake();
+    const { result } = await mcp2.callTool(22, 'master_tracker_get_rows', {});
+    assert.equal(result.isError, true);
+    assert.match(result.content[0].text, /MASTER_TRACKER_STALE_WARN_HOURS is not a positive number: "soon"/);
+  } finally {
+    mcp2.stop();
   }
 });
 
