@@ -35,7 +35,7 @@ Package a single fleet's current commissioning state into a markdown artifact Jo
 5. Cross-reference:
    - Units listed in Master Tracker but not in AMR Hub -> flag as "incoming, not yet ingested."
    - Units in AMR Hub but not in Master Tracker -> flag as "in dashboard, no upstream record" (possible data-entry gap).
-   - Units offline in Overmind but with open buyoff items -> flag as "may block gate progression."
+   - Units offline in Overmind but with open buyoff items -> flag as "may block gate progression." **Currently unfulfillable as written**: `overmind_get_fleet_state`'s five-field contract carries no per-unit online status (a known gap in the fixture too), and step 2 forbids side-channel pulls. Until the first corp-network run verifies the real schema and the tool grows that field, state the omission explicitly in the Cross-reference findings section -- never silently skip it, and never guess at per-unit status.
 6. Draft the handoff package using the output template below. Open with the "was here" signature. Run the `humanizer` skill on the draft before finalizing -- [[Knowledge/Personal/voice]]'s rules win on any conflict (rare; see that file's "Humanizer pass" section). Write the final version to `Projects/handoffs/<YYYY-MM-DD>-<fleet>-handoff.md`.
 7. Append the entry to `log.md`: the prose line `## [<date>] handoff | <fleet> -- <production-ready>/<total> ready, <open-item-count> open items`, followed on the next line by its structured companion (format contract in `log.md`'s header): `<!-- kilroy-log date=<date> skill=fleet-commissioning-handoff event=handoff status=<ok|warn> fleet=<fleet> ready=<n> total=<n> open=<n> -->`. `status=warn` when the package carries the stale-CSV warning banner (Verify step 4), else `status=ok`.
 
@@ -47,7 +47,7 @@ Before handing the package back to Jordan:
    - One fact from the Overmind response (e.g. image tag)
    - One fact from the AMR Hub response (e.g. a specific unit's blocked reason)
    Confirm both quotes appear verbatim in the raw response payloads.
-2. **Sum audit**: total unit count in the handoff = total unit count returned from `GET /api/amrs` for this fleet. No unit falls off.
+2. **Sum audit**: total unit count in the handoff = the `unitCount` reported by the `amr_hub_get_units` tool result for this fleet (with `totalUnitCount` as the cross-check that the filter itself saw the full Hub). No unit falls off.
 3. **No fabricated IDs**: every robot ID mentioned in the handoff appears in the Overmind payload, the AMR Hub payload, or the Master Tracker CSV. (The CSV is a valid source here, not just AMR Hub/Overmind -- step 5's "incoming, not yet ingested" finding necessarily cites a unit that exists only in the Master Tracker CSV.)
 4. **CSV freshness**: if the Master Tracker CSV's `mtime` is older than `$MASTER_TRACKER_STALE_WARN_HOURS`, include a `> Warning: Master Tracker CSV is <N>h old. Re-export before final handoff.` line at the top of the package.
 5. **Humanizer didn't touch facts**: re-run steps 1-3 above against the post-humanizer version, not just the draft. A rewrite pass can smooth phrasing in a way that loosens a specific number, drops a unit ID, or rephrases a blocker reason into something vaguer -- confirm none of that happened before delivering.

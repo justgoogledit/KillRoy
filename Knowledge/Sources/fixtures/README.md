@@ -25,7 +25,7 @@ mistake obvious immediately.
 
 ## How to dry-run a skill against these fixtures
 
-Kilroy's skills are written to call live connectors (the `amr_hub_get_units` MCP tool for AMR Hub, Overmind GraphQL, the CSV
+Kilroy's skills are written to call live connectors (the `amr_hub_get_units` and `overmind_get_fleet_state` MCP tools, the CSV
 path in `.env`). To dry-run without live access, tell Kilroy explicitly which fixture stands in
 for which call, and to treat everything else identically -- including the `## Verify` steps. For
 example:
@@ -38,7 +38,7 @@ example:
 For `fleet-commissioning-handoff`, name all three stand-ins:
 
 > "Dry-run `kilroy handoff gftx-cybercab-2m-b3-agv`. Use
-> `Knowledge/Sources/fixtures/overmind-fleet-state.json` in place of the Overmind GraphQL pull,
+> `Knowledge/Sources/fixtures/overmind-fleet-state.json` in place of the `overmind_get_fleet_state` MCP tool call,
 > `Knowledge/Sources/fixtures/amr-hub-response.json` in place of the AMR Hub pull (the `amr_hub_get_units` MCP tool -- both `arriving-amr-progress` and `fleet-commissioning-handoff` consume it now), and
 > `Knowledge/Sources/fixtures/master-tracker.csv` in place of `$MASTER_TRACKER_CSV_PATH`. Run
 > Verify exactly as written, including the CSV freshness check against this file's real mtime."

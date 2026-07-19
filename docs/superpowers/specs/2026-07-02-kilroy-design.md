@@ -108,8 +108,8 @@ outputs:
 Steps:
 
 1. Resolve fleet-name against Overmind `deployments/global_values.yaml` (or the cached snapshot in `Knowledge/Sources/overmind-fleets.md`).
-2. Pull current `active/*.yaml` state via Overmind GraphQL for that fleet: image tag, robot count, tracer events, MFS wiring, `RobotConfigs.yaml` deltas.
-3. Pull AMR Hub gate data for that fleet via `GET /api/amrs`: per-unit `buyoff220Status`, `buyoff250Status`, `buyoff270Status`, `buyoff280Status` (+ blocked-reason fields), and derive production-ready count (all 4 = `Complete`).
+2. Pull current `active/*.yaml` state via Overmind GraphQL for that fleet: image tag, robot count, tracer events, MFS wiring, `RobotConfigs.yaml` deltas. *(Superseded 2026-07-19: this pull now goes through the `overmind_get_fleet_state` tool on the `kilroy-connectors` MCP server -- see `mcp-server/` and the current `Skills/fleet-commissioning-handoff/SKILL.md`.)*
+3. Pull AMR Hub gate data for that fleet via `GET /api/amrs`: per-unit `buyoff220Status`, `buyoff250Status`, `buyoff270Status`, `buyoff280Status` (+ blocked-reason fields), and derive production-ready count (all 4 = `Complete`). *(Superseded 2026-07-19: this pull now goes through the `amr_hub_get_units` tool on the same server.)*
 4. Read the Sonic AMR Master Tracker CSV export from `$MASTER_TRACKER_CSV_PATH`. Extract per-unit `pipelineStatus`, `etaAtFactory`, `projectIdentifier`, `vendorRef`, `hardwareRevision` for units in the target fleet. Cross-reference: flag units the Master Tracker lists but AMR Hub does not yet know about (physically incoming, not yet ingested), and vice-versa.
 5. Cross-reference: any buyoff item whose robot is offline in Overmind gets flagged.
 6. Render the handoff package to `Projects/handoffs/<date>-<fleet>-handoff.md` using Kilroy's voice.

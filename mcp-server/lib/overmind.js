@@ -71,6 +71,9 @@ export async function pullOvermindFleetState({
       const code = findSyscallCode(cause) ?? cause.message;
       throw new Error(`Overmind unreachable at ${base} (fleet=${fleetId}): ${code}.`, { cause });
     }
+    // The body is never read in probe mode -- cancel it so a long-lived server
+    // process doesn't hold sockets open per probe.
+    await res.body?.cancel().catch(() => {});
     // Any HTTP response -- auth-rejected included -- proves reachability;
     // v1 is on-corp-network-open, so data access is not what's being tested.
     return { reachable: true, httpStatus: res.status, url: base, fleetId };
@@ -91,6 +94,7 @@ export async function pullOvermindFleetState({
   }
 
   if (!res.ok) {
+    await res.body?.cancel().catch(() => {});
     throw new Error(`Overmind returned HTTP ${res.status} for ${gqlUrl} (fleet=${fleetId}). Not treating this as empty fleet state. If this is an auth rejection off corp network, that is expected -- v1 Overmind pulls require the corp network.`);
   }
 
@@ -109,15 +113,38 @@ export async function pullOvermindFleetState({
 
   // Accept the GraphQL envelope ({data:{fleet:{...}}}) or a flat object -- the
   // flat form is what the fixture file contains, so tool-level dry-runs can
-  // serve the fixture bytes directly.
-  const state = parsed?.data?.fleet ?? parsed;
+  // serve the fixture bytes directly. But an envelope with a null/missing
+  // fleet is GraphQL's normal "no such fleet" result, not a shape problem --
+  // diagnose it as such instead of falling through to the flat path.
+  let state;
+  if (parsed !== null && typeof parsed === 'object' && 'data' in parsed) {
+    const fleet = parsed.data?.fleet;
+    if (fleet === null || fleet === undefined || typeof fleet !== 'object') {
+      throw new Error(`Overmind returned no fleet data for "${fleetId}" (data.fleet is ${fleet === undefined ? 'missing' : String(fleet)}) at ${gqlUrl}. Unknown fleet id, or the UNVERIFIED query does not match the real schema -- see mcp-server/lib/overmind.js.`);
+    }
+    state = fleet;
+  } else {
+    state = parsed;
+  }
+
   const missing = REQUIRED_FIELDS.filter((f) => state?.[f] === undefined);
   if (missing.length > 0) {
     throw new Error(`Overmind response at ${gqlUrl} is missing required field(s): ${missing.join(', ')}. Unexpected shape -- refusing to guess. The query is UNVERIFIED against the real schema; see mcp-server/lib/overmind.js.`);
   }
 
+  // The URL, not the query, selects the fleet -- so a returned fleetId that
+  // contradicts the requested one means the template targeted the wrong
+  // fleet. overmind-fleets.md warns about exactly this hazard; never hand
+  // back another fleet's state as if it were the requested one. And when the
+  // source omits fleetId, say null rather than echoing the request back as if
+  // the source confirmed it.
+  if (state.fleetId !== undefined && state.fleetId !== fleetId) {
+    throw new Error(`Overmind returned state for fleet "${state.fleetId}" but "${fleetId}" was requested (${gqlUrl}). Check OVERMIND_BASE_URL_TEMPLATE targeting -- refusing to hand back another fleet's state.`);
+  }
+
   return {
-    fleetId: state.fleetId ?? fleetId,
+    fleetId: state.fleetId ?? null,
+    requestedFleetId: fleetId,
     imageTag: state.imageTag,
     robotCount: state.robotCount,
     robotCountNote: state.robotCountNote ?? null,

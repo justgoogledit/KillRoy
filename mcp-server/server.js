@@ -106,10 +106,17 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
     // overmind_get_fleet_state -- fleetId is required here; the lib validates
     // it (and the template, and the timeout) and throws with specific reasons.
+    const reachabilityOnly = args?.reachabilityOnly;
+    if (reachabilityOnly !== undefined && typeof reachabilityOnly !== 'boolean') {
+      // The SDK does not enforce inputSchema types. A string "true" here would
+      // silently run the FULL pull instead of the probe -- opposite semantics,
+      // failing off-corp where check-connectors expected a reachability pass.
+      return fail('FAIL: reachabilityOnly, when provided, must be a boolean (true/false), not a string.');
+    }
     const result = await pullOvermindFleetState({
       baseUrlTemplate: env.OVERMIND_BASE_URL_TEMPLATE,
       fleetId,
-      reachabilityOnly: args?.reachabilityOnly === true,
+      reachabilityOnly: reachabilityOnly === true,
       timeoutSec: env.OVERMIND_TIMEOUT_SEC,
     });
     return { content: [{ type: 'text', text: JSON.stringify(result) }] };

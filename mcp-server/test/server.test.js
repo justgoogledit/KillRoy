@@ -127,9 +127,35 @@ test('server: overmind reachability + full-pull plumbing works end to end', asyn
     const noFleet = await mcp.callTool(12, 'overmind_get_fleet_state', {});
     assert.equal(noFleet.result.isError, true);
     assert.match(noFleet.result.content[0].text, /fleetId must be a non-empty string/);
+
+    // A string "true" must be rejected, not silently run the full pull.
+    const stringTrue = await mcp.callTool(13, 'overmind_get_fleet_state', {
+      fleetId: 'gftx-cybercab-2m-b3-agv', reachabilityOnly: 'true',
+    });
+    assert.equal(stringTrue.result.isError, true);
+    assert.match(stringTrue.result.content[0].text, /reachabilityOnly, when provided, must be a boolean/);
   } finally {
     mcp.stop();
     await new Promise((r) => httpd.close(r));
+  }
+});
+
+test('server: bad OVERMIND_TIMEOUT_SEC in .env fails loud, never a silent default', async () => {
+  const envFile = join(mkdtempSync(join(tmpdir(), 'kilroy-mcp-')), '.env');
+  writeFileSync(
+    envFile,
+    'OVERMIND_BASE_URL_TEMPLATE=http://127.0.0.1:9/fleets/{fleet}\nOVERMIND_TIMEOUT_SEC=fast\n',
+  );
+  const mcp = startMcp(envFile);
+  try {
+    await mcp.handshake();
+    const { result } = await mcp.callTool(14, 'overmind_get_fleet_state', {
+      fleetId: 'gftx-cybercab-2m-b3-agv', reachabilityOnly: true,
+    });
+    assert.equal(result.isError, true);
+    assert.match(result.content[0].text, /OVERMIND_TIMEOUT_SEC is not a positive number: "fast"/);
+  } finally {
+    mcp.stop();
   }
 });
 

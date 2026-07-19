@@ -32,6 +32,7 @@ export async function pullAmrUnits({ baseUrl, fleetId, fetchImpl = fetch, timeou
   }
 
   if (!res.ok) {
+    await res.body?.cancel().catch(() => {});
     throw new Error(`AMR Hub returned HTTP ${res.status} for ${url}. Not treating this as an empty fleet.`);
   }
 

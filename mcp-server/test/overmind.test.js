@@ -162,6 +162,57 @@ test('full pull fail loud: unparseable body refuses to guess', async () => {
   }
 });
 
+test('full pull fail loud: null data.fleet is diagnosed as unknown fleet, not a shape error', async () => {
+  const srv = await serveOvermind((req, res) => {
+    res.writeHead(200, { 'content-type': 'application/json' });
+    res.end(JSON.stringify({ data: { fleet: null } }));
+  });
+  try {
+    await assert.rejects(
+      pullOvermindFleetState({ baseUrlTemplate: srv.template, fleetId: FLEET }),
+      (err) => {
+        assert.match(err.message, /no fleet data for "gftx-cybercab-2m-b3-agv"/);
+        assert.match(err.message, /Unknown fleet id/);
+        assert.doesNotMatch(err.message, /missing required field/);
+        return true;
+      },
+    );
+  } finally {
+    await srv.close();
+  }
+});
+
+test('full pull fail loud: returned fleetId contradicting the request is refused', async () => {
+  const srv = await serveOvermind((req, res) => {
+    res.writeHead(200, { 'content-type': 'application/json' });
+    res.end(JSON.stringify({ data: { fleet: { ...fixture, fleetId: 'gftx-ct-door-1m-agv' } } }));
+  });
+  try {
+    await assert.rejects(
+      pullOvermindFleetState({ baseUrlTemplate: srv.template, fleetId: FLEET }),
+      /returned state for fleet "gftx-ct-door-1m-agv" but "gftx-cybercab-2m-b3-agv" was requested/,
+    );
+  } finally {
+    await srv.close();
+  }
+});
+
+test('full pull: source omitting fleetId yields null, never an echoed request id', async () => {
+  const anonymous = { ...fixture };
+  delete anonymous.fleetId;
+  const srv = await serveOvermind((req, res) => {
+    res.writeHead(200, { 'content-type': 'application/json' });
+    res.end(JSON.stringify({ data: { fleet: anonymous } }));
+  });
+  try {
+    const state = await pullOvermindFleetState({ baseUrlTemplate: srv.template, fleetId: FLEET });
+    assert.equal(state.fleetId, null);
+    assert.equal(state.requestedFleetId, FLEET);
+  } finally {
+    await srv.close();
+  }
+});
+
 test('validation: empty fleetId, missing template, template without {fleet}, bad timeout', async () => {
   await assert.rejects(
     pullOvermindFleetState({ baseUrlTemplate: 'http://x/{fleet}', fleetId: '' }),
