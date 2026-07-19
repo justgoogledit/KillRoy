@@ -71,7 +71,7 @@ Inherited from the agentic-os starter-pack:
 No build, lint, or test tooling. This repo is prose and markdown -- `SKILL.md` files, `Knowledge/*.md`, generated `Projects/*.md` reports. Nothing to compile or run.
 
 - **Verification is per-skill, not a global test suite.** Every `Skills/*/SKILL.md` has its own `## Verify` section -- a checklist run after executing that skill (sum audits, fact-traceability checks, fail-loud confirmations). That's the closest thing to "tests" here.
-- **Dry-run a skill without live connectors** using `Knowledge/Sources/fixtures/` -- synthetic AMR Hub, Overmind, Master Tracker CSV, and Planner/Graph API data, including a deliberately-broken response for exercising the fail-loud path. See its `README.md` for the exact invocation pattern.
+- **Dry-run a skill without live connectors** using `Knowledge/Sources/fixtures/` -- synthetic AMR Hub, Overmind, Master Tracker CSV, and Planner/Graph API data, including a deliberately-broken response for exercising the fail-loud path. See its `README.md` for the exact invocation pattern, or run [[Skills/verify-fixtures/SKILL|verify-fixtures]] to dry-run every documented pairing (or just one skill's) in a single step instead of by hand.
 - **`.claude/hooks/session-start.sh`** runs a fast connector-reachability probe on every session start (registered in `.claude/settings.json`) -- a lightweight heads-up, not a replacement for the full `check-connectors` skill.
 - **Skill file shape:** every `SKILL.md` follows the same template -- frontmatter, When to use, Applies, Steps, Verify, Output template, Examples, Anti-patterns. See `Skills/skill-creator/SKILL.md` for the canonical version before adding or editing a skill.
 
@@ -114,7 +114,7 @@ Voice + register defaults live in [[Knowledge/Personal/voice]] and [[Knowledge/P
 
 ## Anti-patterns
 
-- **Skill sprawl.** Three Jordan-facing workflows now (plus `check-connectors`, which is infrastructure, not a workflow). Add a fourth workflow only when Jordan hits the same manual task 3+ times.
+- **Skill sprawl.** Three Jordan-facing workflows now (plus `check-connectors` and `verify-fixtures`, which are infrastructure, not workflows). Add a fourth workflow only when Jordan hits the same manual task 3+ times.
 - **Writing to AMR Hub.** Read-only for v1. Kilroy never PATCHes buyoff gates -- Jordan does that in the dashboard.
 - **Silent edits to skills or this file.** Surface the diff.
 - **Skipping session-recap.** Always end the session with it unless told not to.

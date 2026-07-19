@@ -37,7 +37,8 @@ Scaffolds new skills so they all follow the same shape and don't overlap.
 7. Add 1 good and 1 bad example.
 8. List anti-patterns.
 9. Add the skill to `Skills/Skills.md` under the right section.
-10. Print the diff for review before committing.
+10. Run [[Skills/verify-fixtures/SKILL|verify-fixtures]], scoped to the skill just created or edited (pass its name as the target-skill input). If it has no fixture pairings documented in `Knowledge/Sources/fixtures/README.md` -- true for most foundational skills, including this one -- verify-fixtures reports that explicitly; that counts as a pass. A FAIL blocks: fix the skill (or the fixture, if the fixture is what's wrong) and re-run before continuing. Do not consider the edit done on a FAIL.
+11. Print the diff for review before committing.
 
 ## Canonical SKILL.md template
 
@@ -75,3 +76,4 @@ outputs: <where output lands>
 - Creating a skill before doing the task once manually. You can't write good steps for a workflow you've never run.
 - Vague triggers like "when relevant" — useless. Specify the exact phrase.
 - Stuffing multiple jobs into one skill. If the steps split cleanly into two outputs, that's two skills.
+- Skipping the `verify-fixtures` check (step 10) because the diff "looks right." A skill edit isn't done until that check passes -- or explicitly reports the skill has no fixture pairings -- not just once the template sections are filled in.

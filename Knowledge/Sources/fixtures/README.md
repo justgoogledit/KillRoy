@@ -51,9 +51,10 @@ synthetic env override together:
 
 > "Dry-run the morning phase of `run-daily-workflow`. Use
 > `Knowledge/Sources/fixtures/planner-tasks-response.json` in place of the live Graph API pull
-> across `PLANNER_PLAN_IDS`, and treat `GRAPH_API_USER_OBJECT_ID=aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee`
-> as the resolved Jordan object ID (skip the real `GET /me` call). Run Verify exactly as written,
-> including the data-quality-flag check on the null-`dueDateTime` task."
+> across `PLANNER_PLAN_IDS`, treat `GRAPH_API_USER_OBJECT_ID=aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee`
+> as the resolved Jordan object ID (skip the real `GET /me` call), and treat **2026-07-18** (the
+> fixture's baked-in reference date -- see below) as 'today' for the due-today comparison. Run
+> Verify exactly as written, including the data-quality-flag check on the null-`dueDateTime` task."
 
 ### Synthetic env values for the Planner fixture
 
@@ -63,6 +64,13 @@ it, use this value for `GRAPH_API_USER_OBJECT_ID` (overriding the real `/me` res
 ```
 GRAPH_API_USER_OBJECT_ID=aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee
 ```
+
+The fixture is also keyed to one specific synthetic "today": **2026-07-18**. Every `dueDateTime`
+in the file is fixed (the due-today tasks carry `2026-07-18T05:00:00Z` -- midnight CDT), so a
+dry-run on any other real calendar date must treat 2026-07-18 as "today" for the due-today
+comparison, or the filter correctly-but-uselessly returns zero due-today tasks. Same idea as the
+GUID override above: the fixture bakes in a reference value, the dry-run adopts it. (Found by the
+first `verify-fixtures` run on 2026-07-19, one day after the fixture was written.)
 
 The fixture also includes a second synthetic GUID, `11111111-2222-4333-8444-555555555555`,
 assigned to a task that is due today but is **not** Jordan's -- this is the "assigned to someone
@@ -129,8 +137,15 @@ below). It is not a value you set in `.env`; it exists only inside the fixture t
    touch -d "48 hours ago" Knowledge/Sources/fixtures/master-tracker-stale.csv
    ```
    48 hours comfortably clears the 24h threshold. To test the non-stale path, dry-run against
-   plain `master-tracker.csv` instead (its mtime is whenever it was last written/checked out,
-   which should read as fresh).
+   plain `master-tracker.csv` instead. Its mtime is whenever it was last written or checked out --
+   and because git does not preserve mtimes, a checkout (or long-lived container) older than
+   `MASTER_TRACKER_STALE_WARN_HOURS` reads as stale even though the file is the "fresh" fixture.
+   Re-set it to now immediately before any dry-run that needs the non-stale path:
+   ```bash
+   touch Knowledge/Sources/fixtures/master-tracker.csv
+   ```
+   (Found by the first `verify-fixtures` run on 2026-07-19, in a container whose checkout was ~48h
+   old.)
 
 ## Blocked units and team attribution (for `arriving-amr-progress` / blocker grouping tests)
 
