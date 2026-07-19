@@ -1,3 +1,19 @@
+// Walk an error's cause chain (including AggregateError errors[]) for the
+// first syscall-style code (ECONNREFUSED, ETIMEDOUT, EAI_AGAIN, ...).
+function findSyscallCode(err) {
+  const seen = new Set();
+  const stack = [err];
+  while (stack.length > 0) {
+    const e = stack.pop();
+    if (!e || typeof e !== 'object' || seen.has(e)) continue;
+    seen.add(e);
+    if (typeof e.code === 'string' && /^E[A-Z_]+$/.test(e.code)) return e.code;
+    if (e.cause) stack.push(e.cause);
+    if (Array.isArray(e.errors)) stack.push(...e.errors);
+  }
+  return null;
+}
+
 // Core AMR Hub pull, separated from the MCP wiring so node:test can drive it
 // directly against fixture-serving HTTP servers.
 //
@@ -10,13 +26,23 @@ export async function pullAmrUnits({ baseUrl, fleetId, fetchImpl = fetch, timeou
     throw new Error('AMR_HUB_BASE_URL is not set or empty. Fill it in .env (see .env.example).');
   }
 
-  const url = new URL('/api/amrs', baseUrl).toString();
+  let url;
+  try {
+    url = new URL('/api/amrs', baseUrl).toString();
+  } catch (cause) {
+    throw new Error(`AMR_HUB_BASE_URL is not a valid URL: "${baseUrl}". Fix it in .env (see .env.example).`, { cause });
+  }
 
   let res;
   try {
     res = await fetchImpl(url, { signal: AbortSignal.timeout(timeoutMs) });
   } catch (cause) {
-    throw new Error(`AMR Hub unreachable at ${url}: ${cause.message}. This is not a zero-unit fleet; the source could not be contacted.`, { cause });
+    // undici buries the useful code (ECONNREFUSED, ETIMEDOUT, ...) somewhere
+    // down the cause chain -- sometimes cause.cause.code, sometimes inside an
+    // AggregateError's errors[]. Walk the whole chain so "fetch failed" never
+    // eats the real reason.
+    const code = findSyscallCode(cause) ?? cause.message;
+    throw new Error(`AMR Hub unreachable at ${url}: ${code}. This is not a zero-unit fleet; the source could not be contacted.`, { cause });
   }
 
   if (!res.ok) {

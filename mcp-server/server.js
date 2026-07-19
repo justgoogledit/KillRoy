@@ -17,6 +17,10 @@ import { pullAmrUnits } from './lib/amr-hub.js';
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 
+// Overridable for tests only (test/server.test.js points it at temp files so
+// the suite never touches a real repo-root .env). Normal operation: unset.
+const envPath = process.env.KILROY_ENV_PATH || join(repoRoot, '.env');
+
 const TOOLS = [
   {
     name: 'amr_hub_get_units',
@@ -53,7 +57,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     throw new Error(`Unknown tool: ${name}`);
   }
 
-  const env = loadEnv(join(repoRoot, '.env'));
+  const env = loadEnv(envPath);
   if (env === null) {
     // Same message shape the session-start hook and check-connectors use.
     return {
@@ -61,8 +65,21 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       content: [
         {
           type: 'text',
-          text: `FAIL: .env not found at ${join(repoRoot, '.env')} -- cp .env.example .env, then fill it in.`,
+          text: `FAIL: .env not found at ${envPath} -- cp .env.example .env, then fill it in.`,
         },
+      ],
+    };
+  }
+
+  const fleetId = args?.fleetId;
+  if (fleetId !== undefined && (typeof fleetId !== 'string' || fleetId.trim() === '')) {
+    // An empty/blank fleetId is a caller bug, not "no filter" -- silently
+    // widening the query to every unit would be the quiet-fallback behavior
+    // this server exists to eliminate.
+    return {
+      isError: true,
+      content: [
+        { type: 'text', text: 'FAIL: fleetId, when provided, must be a non-empty string. Omit it entirely to get every unit.' },
       ],
     };
   }
@@ -70,7 +87,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   try {
     const result = await pullAmrUnits({
       baseUrl: env.AMR_HUB_BASE_URL,
-      fleetId: args?.fleetId || undefined,
+      fleetId,
     });
     return { content: [{ type: 'text', text: JSON.stringify(result) }] };
   } catch (err) {

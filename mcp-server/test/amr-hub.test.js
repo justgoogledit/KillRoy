@@ -139,11 +139,24 @@ test('bare-array body is accepted (schema-simplification tolerance)', async () =
   }
 });
 
-test('fail loud: connection refused rejects with "unreachable"', async () => {
+test('fail loud: connection refused names ECONNREFUSED, not just "fetch failed"', async () => {
   const srv = await serveBody('{}');
   const deadBase = srv.baseUrl;
   await srv.close();
-  await assert.rejects(pullAmrUnits({ baseUrl: deadBase }), /unreachable/);
+  await assert.rejects(pullAmrUnits({ baseUrl: deadBase }), (err) => {
+    assert.match(err.message, /unreachable/);
+    // undici buries the code at cause.cause; the wrapper must surface it.
+    assert.match(err.message, /ECONNREFUSED/);
+    return true;
+  });
+});
+
+test('fail loud: malformed base URL names the var and the value', async () => {
+  await assert.rejects(pullAmrUnits({ baseUrl: 'not a url' }), (err) => {
+    assert.match(err.message, /AMR_HUB_BASE_URL is not a valid URL/);
+    assert.match(err.message, /"not a url"/);
+    return true;
+  });
 });
 
 test('fail loud: missing baseUrl rejects immediately, pointing at .env', async () => {

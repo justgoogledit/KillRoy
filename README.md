@@ -19,6 +19,9 @@ cp .env.example .env
 claude
 ```
 
+Launch `claude` from the repo root: `.mcp.json` starts the `kilroy-connectors` MCP server with a
+relative path (`mcp-server/server.js`), which resolves against the launch directory.
+
 ## First session
 
 Ask Kilroy: *"What's in this repo and how should we use it?"*

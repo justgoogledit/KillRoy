@@ -142,7 +142,7 @@ outputs:
 
 Steps:
 
-1. Read AMR Hub `GET /api/amrs` (optionally filtered by fleet).
+1. Read AMR Hub `GET /api/amrs` (optionally filtered by fleet). *(Superseded 2026-07-19: this read now goes through the `amr_hub_get_units` tool on the `kilroy-connectors` MCP server -- see `mcp-server/` and the current `Skills/arriving-amr-progress/SKILL.md`. The rest of this spec is left as written; it is the historical design record.)*
 2. For each unit, extract the 4 gate statuses + any `buyoff{gate}BlockedReason` populated.
 3. Bucket units by current gate: `at-220`, `at-250`, `at-270`, `at-280`, `production-ready` (all 4 complete). Add a `pending-290-column` note if a unit is production-ready under the current 4-gate schema.
 4. For each blocked unit, surface the blocker text, days-blocked (from `updatedAt`), **and the owning team** (from the hard-coded gate-ownership map). Group blockers by owning team so Jordan sees who to push.

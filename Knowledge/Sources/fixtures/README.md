@@ -39,7 +39,7 @@ For `fleet-commissioning-handoff`, name all three stand-ins:
 
 > "Dry-run `kilroy handoff gftx-cybercab-2m-b3-agv`. Use
 > `Knowledge/Sources/fixtures/overmind-fleet-state.json` in place of the Overmind GraphQL pull,
-> `Knowledge/Sources/fixtures/amr-hub-response.json` in place of the AMR Hub pull (the `amr_hub_get_units` MCP tool for `arriving-amr-progress`; `fleet-commissioning-handoff`'s own AMR Hub step is still prose-described until tickets #8-#9 migrate it), and
+> `Knowledge/Sources/fixtures/amr-hub-response.json` in place of the AMR Hub pull (the `amr_hub_get_units` MCP tool for `arriving-amr-progress`; `fleet-commissioning-handoff`'s own AMR Hub step is still prose-described -- its migration rides with ticket #8, noted there, since that ticket already migrates the same skill's Overmind pull), and
 > `Knowledge/Sources/fixtures/master-tracker.csv` in place of `$MASTER_TRACKER_CSV_PATH`. Run
 > Verify exactly as written, including the CSV freshness check against this file's real mtime."
 
