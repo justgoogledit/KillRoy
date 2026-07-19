@@ -28,7 +28,7 @@ The most important skill in the system. Every session feeds Knowledge so the nex
 4. **Update affected Knowledge files.** If a lesson contradicts something in `Personal/` or `Consultants/`, edit those files (don't just append a contradiction).
 5. **Surface the diff.** End your message with a bullet list of files written/changed so the user can review.
 6. **Drift detection (optional final step).** If this session's lesson is the THIRD or later instance of a recurring pattern across past lessons — Grep `Knowledge/Lessons/` for the same `tags` or topic — propose (do NOT apply) an update to `CLAUDE.md`, a `Knowledge/Personal/*` file, or the relevant skill. Surface as a diff for approval. Threshold is deliberate: single mistakes go in lessons; recurring patterns are vault-level drift worth promoting.
-7. **Append one line to vault-root `log.md`:** `## [YYYY-MM-DD] lesson | <slug>` (and a second line `## [YYYY-MM-DD] setup | <change>` if step 6 produced an approved drift edit).
+7. **Append to vault-root `log.md`:** the prose line `## [YYYY-MM-DD] lesson | <slug>`, followed on the next line by its structured companion (format contract in `log.md`'s header): `<!-- kilroy-log date=<YYYY-MM-DD> skill=session-recap event=recap status=ok type=lesson slug=<slug> -->`. If step 6 produced an approved drift edit, append a second pair the same way: `## [YYYY-MM-DD] setup | <change>` plus `<!-- kilroy-log date=<YYYY-MM-DD> skill=session-recap event=recap status=ok type=setup slug=<kebab-case-slug-of-the-change> -->`.
 
 ## Output template
 
@@ -74,4 +74,4 @@ tags: [lesson]
 - Don't create a lesson if nothing reusable happened. Better to skip the file.
 - Don't silently rewrite `Personal/` — show the diff.
 - Don't trigger step 6 (drift detection) from a single mistake. Wait for the 3rd recurrence of the same pattern across separate lessons. Drift detection is for trends, not one-offs.
-- Don't skip step 7 (log.md append). The vault-root log is how future sessions discover that this lesson happened without reading every file in `Knowledge/Lessons/`.
+- Don't skip step 7 (log.md append), and don't drop its `kilroy-log` companion line -- the prose line is how future sessions discover the lesson without reading every file in `Knowledge/Lessons/`, and the structured line is what makes the log greppable by machine.

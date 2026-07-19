@@ -1,12 +1,31 @@
 # Vault log
 
-Append-only index. Each entry is one line written by `session-recap` after every working session.
+Append-only index. Entries are written by the log-append step of a skill (`session-recap` after every working session; `arriving-amr-progress`, `fleet-commissioning-handoff`, and `run-daily-workflow` per run; `check-connectors` and `verify-fixtures` on failure only) or by hand for one-off notes.
 
-Format: `## [YYYY-MM-DD] <type> | <slug>`
+Prose format: `## [YYYY-MM-DD] <type> | <summary>`
 
-Types: `lesson`, `setup`, `source`, `project`.
+Types: `lesson`, `setup`, `source`, `project` (session-recap and hand-written entries), plus the skill event types `progress`, `handoff`, `daily`.
 
 This file is how future sessions discover that something happened without reading every file in `Knowledge/Lessons/`.
+
+## Structured companion line (the `kilroy-log` contract)
+
+Every entry written by a skill's log-append step also carries exactly one machine-readable line, placed on the line immediately after the prose `## [...]` line it annotates:
+
+`<!-- kilroy-log date=<YYYY-MM-DD> skill=<skill-name> event=<event> status=<ok|warn|fail> <event-specific key=value fields> -->`
+
+Rules:
+
+- An HTML comment, so the rendered human-readable log is unchanged. One physical line, never wrapped.
+- The four core fields come first, in that order: `date`, `skill` (the emitting skill's name), `event`, `status`. Event-specific fields follow; each skill's own log-append step defines its exact field set.
+- Keys are lowercase, underscore-separated. Values contain no spaces: lists are comma-separated, names/slugs hyphenated. Free text (reasons, blocker quotes) stays in the prose line; the structured line carries only enumerable or countable fields.
+- `status` semantics: `fail` on failure-only entries (`connector-check`, `fixture-check`, which log nothing on a green run); `warn` when the run completed but surfaced a WARN banner or data-quality flag; `ok` otherwise.
+- Hand-written entries don't need the line. Entries predating 2026-07-19 don't have one; do not retrofit them -- this file is append-only.
+
+Grep contract: every structured line matches the fixed string `kilroy-log`. Examples:
+
+- How often has the connector check failed? `grep -c 'kilroy-log.*event=connector-check' log.md`
+- Every non-green skill run: `grep 'kilroy-log' log.md | grep -v 'status=ok'`
 
 ---
 

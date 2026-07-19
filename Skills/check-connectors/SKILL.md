@@ -5,7 +5,7 @@ trigger: Jordan says "kilroy check" / "check connections" / "are we good to run"
 inputs: optional fleet-name to test Overmind against (defaults to the first non-UNVERIFIED entry in Knowledge/Sources/overmind-fleets.md)
 outputs:
   - stdout: connector status report (pass/fail per source, with the specific reason on failure)
-  - log.md append, but only when at least one check fails -- never on an all-green run
+  - log.md append (prose line + structured `kilroy-log` companion line, per log.md's header contract), but only when at least one check fails -- never on an all-green run
 ---
 
 # check-connectors
@@ -38,7 +38,7 @@ This is a foundational skill (infrastructure, like [[Skills/skill-creator/SKILL|
 5. **Master Tracker CSV** -- confirm the file exists at `$MASTER_TRACKER_CSV_PATH` and is readable. That alone is pass/fail. Separately, compare its `mtime` against `$MASTER_TRACKER_STALE_WARN_HOURS` -- a stale file is a WARN, never a FAIL. Staleness doesn't block anything; it just means the freshness banner will need to fire downstream in `fleet-commissioning-handoff`.
 6. **Planner / Graph API** -- split `PLANNER_PLAN_IDS` on commas and take the first entry as the representative target, same shape as the Overmind check above: test one representative plan, not every configured plan. Full multi-plan enumeration happens only in the actual data pull, in `run-daily-workflow`'s morning phase, not here. If `PLANNER_PLAN_IDS` is empty, skip this check and say why -- don't guess a plan id. Acquire a token with `GRAPH_API_TENANT_ID`/`GRAPH_API_CLIENT_ID`/`GRAPH_API_CLIENT_SECRET`, then attempt a reachability call scoped to that first plan id within a short timeout. Pass = any response confirming the endpoint is reachable, including an auth-rejected one (same reasoning as Overmind -- reachability is what's being tested here, not whether today's credentials are valid or whose tasks resolve). Fail = timeout or connection error -- record the specific error. `GRAPH_API_USER_OBJECT_ID` and the `/me` resolution don't factor into this check -- assignment-based filtering only happens in `run-daily-workflow`'s actual data pull.
 7. Render the status report (template below). If any of steps 2-6 hard-failed, end with `NOT SAFE TO RUN A SKILL` and stop there -- don't let a caller proceed into `arriving-amr-progress`, `fleet-commissioning-handoff`, or `run-daily-workflow`'s data-pulling steps on a red check.
-8. Only if at least one check failed, append one line to `log.md`: `## [<date>] setup | connector-check failed -- <source>: <one-line reason>, ...`. Do not append anything on an all-green run -- log.md would fill with noise otherwise.
+8. Only if at least one check failed, append an entry to `log.md` -- the prose line `## [<date>] setup | connector-check failed -- <source>: <one-line reason>, ...`, followed on the next line by its structured companion (format contract in `log.md`'s header): `<!-- kilroy-log date=<date> skill=check-connectors event=connector-check status=fail failed=<n> sources=<comma-list> -->`, where `failed` counts the FAIL rows and `sources` names them from the fixed set `env,amr-hub,overmind,master-tracker,planner`. Do not append anything on an all-green run -- log.md would fill with noise otherwise.
 
 ## Verify
 
@@ -46,6 +46,7 @@ This is a foundational skill (infrastructure, like [[Skills/skill-creator/SKILL|
 2. A stale-but-readable CSV never produces a hard FAIL on its own -- only a WARN. Confirm the distinction holds in the rendered report.
 3. If `.env` itself is missing, steps 3-6 are skipped entirely (nothing to check against) rather than run with defaulted or guessed values.
 4. No `log.md` line is written on an all-green run.
+5. If the failure entry was written: the `kilroy-log` companion line sits on the line immediately after the prose line, follows the contract in `log.md`'s header, and its `failed=` count and `sources=` list match the FAIL rows in the rendered report exactly.
 
 ## Output template
 

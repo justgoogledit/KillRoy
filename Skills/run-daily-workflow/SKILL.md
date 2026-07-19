@@ -6,7 +6,7 @@ inputs: optional focus fleet (defaults to everything Kilroy tracks)
 outputs:
   - Projects/daily/<YYYY-MM-DD>-daily.md (the day file, primary artifact -- a living document updated across the day)
   - Projects/daily/inbox.md (ad-hoc capture scratch file -- appended to any time, drained into the next morning brief)
-  - log.md append (event line: date, phase, action count, blocker counts by team, carry-over count)
+  - log.md append (prose event line: date, phase, action count, blocker counts by team, carry-over count; + structured `kilroy-log` companion line, per log.md's header contract)
 ---
 
 # run-daily-workflow
@@ -50,7 +50,7 @@ The day runner. Orchestrates Kilroy's existing skills plus a task list into one 
    - Draft the day file using the output template, including the Planner digest section. One recommendation for the day, with the reason. Run `humanizer` on the signature line and the recommendation only -- action-item bullets and Planner task lines stay verbatim. Write the final version.
 3. **Midday pulse.** Re-pull the AMR Hub board and diff against the morning snapshot in the day file: gates that changed status, new blockers, blockers cleared. Also check `Projects/daily/inbox.md` for anything added since the morning drain; fold new items in under the same `(jordan-request)` tag and clear them the same way. Append a "Midday delta" section to the day file. If nothing changed on either front, say so in one line -- no fabricated movement.
 4. **Close-out.** Mark each action item done / moved / still open. Anything still open becomes tomorrow's "Carry-over" section. Append per-gate movement for the day (units that advanced a gate). Planner tasks are excluded from this reconciliation entirely -- they don't count toward the done/moved/still-open conservation check and they don't carry over via the day file's Carry-over mechanism. Reasoning: for AMR blockers the day file *is* the tracking system, so conservation matters -- an action that silently disappears is a real problem. For Planner tasks, Planner itself is the system of record; Kilroy re-reads it fresh every morning, so carrying a "still open" Planner task forward here would just create a second, divergent copy of state Planner already owns. Say so explicitly in the Close-out section: "Planner tasks are not reconciled here -- see Planner directly for current status." Then run [[Skills/session-recap/SKILL|session-recap]] if anything reusable was learned. Append the log.md line.
-5. **Log format:** `## [<date>] daily | <phase> -- <n> actions, <n> blockers (<team>=<n>, ...), <n> carried over`.
+5. **Log format:** the prose line `## [<date>] daily | <phase> -- <n> actions, <n> blockers (<team>=<n>, ...), <n> carried over`, followed on the next line by its structured companion (format contract in `log.md`'s header): `<!-- kilroy-log date=<date> skill=run-daily-workflow event=daily status=<ok|warn> phase=<morning|midday|close-out> actions=<n> blockers=<n> blockers_mfe=<n> blockers_mfa_controls=<n> blockers_mfa_hardware=<n> carried=<n> -->`. `status=warn` when the day file carries a WARN banner line or a `Data quality flags (Planner)` line, else `status=ok`.
 
 ## Proactive invocation
 
@@ -71,6 +71,7 @@ Before handing the day file back to Jordan:
 7. **Planner task traceability**: every task listed in "Today's tasks (Planner)" matches a real row from the Graph API pull (or the fixture, in a dry-run), filtered to the resolved object ID and due today. No invented tasks.
 8. **Planner data quality flags**: a task with a null or missing `dueDateTime` is named explicitly under a "Data quality flags (Planner)" line -- never silently dropped, never guessed into the due-today list. Same pattern as [[Skills/arriving-amr-progress/SKILL|arriving-amr-progress]]'s "Data quality flags" section.
 9. **Planner humanizer scope**: Planner task lines in the final version are byte-for-byte identical to the pre-humanizer draft. Same pattern as Verify item 6 above -- task titles, due dates, and plan names never get touched by humanizer.
+10. **Structured line audit**: the `kilroy-log` companion line sits on the line immediately after the prose log line and follows `log.md`'s header contract; `actions`/`carried` match the close-out reconciliation, `blockers` and the per-team `blockers_*` counts match the board's, and `status` follows the WARN rule in step 5.
 
 ## Output template
 

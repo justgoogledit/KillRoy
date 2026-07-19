@@ -5,7 +5,7 @@ trigger: Jordan says "kilroy handoff <fleet>" / "package the handoff for <fleet>
 inputs: fleet-name (e.g. gftx-cybercab-2m-b3-agv)
 outputs:
   - Projects/handoffs/<YYYY-MM-DD>-<fleet>-handoff.md (the handoff package, primary artifact)
-  - log.md append (event line: date, fleet, open-item count, production-ready count)
+  - log.md append (prose event line: date, fleet, open-item count, production-ready count; + structured `kilroy-log` companion line, per log.md's header contract)
 ---
 
 # fleet-commissioning-handoff
@@ -36,7 +36,7 @@ Package a single fleet's current commissioning state into a markdown artifact Jo
    - Units in AMR Hub but not in Master Tracker -> flag as "in dashboard, no upstream record" (possible data-entry gap).
    - Units offline in Overmind but with open buyoff items -> flag as "may block gate progression."
 6. Draft the handoff package using the output template below. Open with the "was here" signature. Run the `humanizer` skill on the draft before finalizing -- [[Knowledge/Personal/voice]]'s rules win on any conflict (rare; see that file's "Humanizer pass" section). Write the final version to `Projects/handoffs/<YYYY-MM-DD>-<fleet>-handoff.md`.
-7. Append to `log.md`: `## [<date>] handoff | <fleet> -- <production-ready>/<total> ready, <open-item-count> open items`.
+7. Append the entry to `log.md`: the prose line `## [<date>] handoff | <fleet> -- <production-ready>/<total> ready, <open-item-count> open items`, followed on the next line by its structured companion (format contract in `log.md`'s header): `<!-- kilroy-log date=<date> skill=fleet-commissioning-handoff event=handoff status=<ok|warn> fleet=<fleet> ready=<n> total=<n> open=<n> -->`. `status=warn` when the package carries the stale-CSV warning banner (Verify step 4), else `status=ok`.
 
 ## Verify
 
@@ -50,6 +50,7 @@ Before handing the package back to Jordan:
 3. **No fabricated IDs**: every robot ID mentioned in the handoff appears in the Overmind payload, the AMR Hub payload, or the Master Tracker CSV. (The CSV is a valid source here, not just AMR Hub/Overmind -- step 5's "incoming, not yet ingested" finding necessarily cites a unit that exists only in the Master Tracker CSV.)
 4. **CSV freshness**: if the Master Tracker CSV's `mtime` is older than `$MASTER_TRACKER_STALE_WARN_HOURS`, include a `> Warning: Master Tracker CSV is <N>h old. Re-export before final handoff.` line at the top of the package.
 5. **Humanizer didn't touch facts**: re-run steps 1-3 above against the post-humanizer version, not just the draft. A rewrite pass can smooth phrasing in a way that loosens a specific number, drops a unit ID, or rephrases a blocker reason into something vaguer -- confirm none of that happened before delivering.
+6. **Structured line audit**: the `kilroy-log` companion line sits on the line immediately after the prose log line and follows `log.md`'s header contract; its `ready`/`total`/`open` values match the package's own counts, and `status=warn` if and only if the staleness banner from Verify step 4 is present.
 
 If any verify step fails, do not deliver the package -- fix the underlying issue first.
 

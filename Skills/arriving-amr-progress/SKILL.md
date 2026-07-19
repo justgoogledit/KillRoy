@@ -6,7 +6,7 @@ inputs: optional fleet-name (defaults to all fleets Jordan is commissioning)
 outputs:
   - stdout: gate-progress board (per-unit table + per-gate counts + blockers grouped by owning team)
   - Projects/progress/<YYYY-MM-DD>-progress.md (snapshot of the board, primary artifact)
-  - log.md append (event line: date, per-gate counts, per-team blocker counts)
+  - log.md append (prose event line: date, per-gate counts, per-team blocker counts; + structured `kilroy-log` companion line, per log.md's header contract)
 ---
 
 # arriving-amr-progress
@@ -47,7 +47,7 @@ Track each incoming AMR's climb through the buyoff-gate ladder (220 -> 250 -> 27
    - Days-blocked (today minus `updatedAt`)
    - **Owning team** (lookup in the gate ownership map from `Knowledge/Sources/2026-07-02-pc-amr-gates`)
 5. Draft the board. Open with the "was here" signature. Group blockers by owning team so Jordan sees who to push. Run the `humanizer` skill on the prose portions only -- the signature line and the recommendation -- never on the gate tables or blocker text, which must stay verbatim per Verify below. Render the final version to stdout AND write it to `Projects/progress/<YYYY-MM-DD>-progress.md`.
-6. Append to `log.md`: `## [<date>] progress | <at-220>/<at-250>/<at-270>/<at-280>/<production-ready> | blockers: MFE=<n>, MFA Controls=<n>, MFA Hardware=<n>`.
+6. Append the entry to `log.md`: the prose line `## [<date>] progress | <at-220>/<at-250>/<at-270>/<at-280>/<production-ready> | blockers: MFE=<n>, MFA Controls=<n>, MFA Hardware=<n>`, followed on the next line by its structured companion (format contract in `log.md`'s header): `<!-- kilroy-log date=<date> skill=arriving-amr-progress event=progress status=<ok|warn> total=<n> at220=<n> at250=<n> at270=<n> at280=<n> ready=<n> flags=<n> blockers_mfe=<n> blockers_mfa_controls=<n> blockers_mfa_hardware=<n> -->`. `flags` is the unit count under `Data quality flags`; `status=warn` when `flags` > 0, else `status=ok`.
 
 ## Verify
 
@@ -58,6 +58,7 @@ Before returning the board:
 3. **No false production-ready**: no unit is reported as `production-ready` unless all 4 gate statuses literally equal `Complete`.
 4. **Every blocker has an owning team**: no unattributed blockers. If the gate ownership map has no entry, stop and flag it to Jordan.
 5. **Humanizer stayed in its lane**: the gate tables and blocker text in the final version are byte-for-byte identical to the pre-humanizer draft. Only the signature line and the recommendation changed.
+6. **Structured line audit**: the `kilroy-log` companion line sits on the line immediately after the prose log line and follows `log.md`'s header contract; its bucket counts satisfy the same sum audit as item 1 (`at220+at250+at270+at280+ready+flags = total`), its three `blockers_*` counts match the per-team totals on the board, and `status` follows the `flags` rule in step 6.
 
 ## Output template
 
