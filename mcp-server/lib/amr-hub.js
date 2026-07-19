@@ -1,18 +1,4 @@
-// Walk an error's cause chain (including AggregateError errors[]) for the
-// first syscall-style code (ECONNREFUSED, ETIMEDOUT, EAI_AGAIN, ...).
-function findSyscallCode(err) {
-  const seen = new Set();
-  const stack = [err];
-  while (stack.length > 0) {
-    const e = stack.pop();
-    if (!e || typeof e !== 'object' || seen.has(e)) continue;
-    seen.add(e);
-    if (typeof e.code === 'string' && /^E[A-Z_]+$/.test(e.code)) return e.code;
-    if (e.cause) stack.push(e.cause);
-    if (Array.isArray(e.errors)) stack.push(...e.errors);
-  }
-  return null;
-}
+import { findSyscallCode } from './errors.js';
 
 // Core AMR Hub pull, separated from the MCP wiring so node:test can drive it
 // directly against fixture-serving HTTP servers.

@@ -21,6 +21,7 @@ Package a single fleet's current commissioning state into a markdown artifact Jo
 ## Applies
 
 - [[Knowledge/Sources/2026-07-02-pc-amr-gates|Gate ownership map]] -- 220/250/270/280/290 -> owning team.
+- `kilroy-connectors` MCP server (`mcp-server/`, registered in `.mcp.json`) -- source of the Overmind fleet state (`overmind_get_fleet_state`) and the AMR Hub unit data (`amr_hub_get_units`); its `node:test` suite proves both pulls' fail-loud contracts. The Master Tracker CSV read stays prose-described until ticket #9 migrates it.
 - [[Knowledge/Personal/voice]] -- packaged outputs open with the "was here" signature; see its "Humanizer pass on packaged outputs" section for the precedence rule below.
 - [[Knowledge/Personal/preferences]] -- one recommendation with reason; concrete over abstract.
 - `humanizer` skill (`~/.claude/skills/humanizer`) -- run on the drafted package before finalizing (step 6).
@@ -28,8 +29,8 @@ Package a single fleet's current commissioning state into a markdown artifact Jo
 ## Steps
 
 1. Resolve the fleet name. Confirm it appears in the Master Tracker CSV (`$MASTER_TRACKER_CSV_PATH`, column `projectIdentifier` or equivalent). If not, stop and ask Jordan.
-2. Pull current `active/*.yaml` state via Overmind GraphQL for that fleet: image tag, robot count, tracer events, MFS wiring, `RobotConfigs.yaml` deltas. Base URL from `$OVERMIND_BASE_URL_TEMPLATE` with `{fleet}` substituted.
-3. Pull AMR Hub gate data via `GET $AMR_HUB_BASE_URL/api/amrs` (optionally filtered by fleet). For each unit extract `buyoff220Status`, `buyoff250Status`, `buyoff270Status`, `buyoff280Status`, corresponding `*BlockedReason` fields, and `updatedAt`. Derive `production-ready` = all 4 gates `= Complete`.
+2. Pull the fleet's Overmind state via the `overmind_get_fleet_state` tool on the `kilroy-connectors` MCP server (full mode, `fleetId` = the resolved fleet): image tag, robot count, tracer events, MFS wiring, `RobotConfigs.yaml` deltas. The tool substitutes `{fleet}` into `OVERMIND_BASE_URL_TEMPLATE` itself and fails loud -- naming the syscall code, HTTP status, GraphQL error, or missing field -- rather than ever returning partial state; if it errors, stop and report per `CLAUDE.md`'s fail-loud rule. Note the tool's GraphQL query is marked UNVERIFIED against the real schema until the first corp-network run (see `mcp-server/lib/overmind.js`) -- a schema-mismatch error there is the tool working, not a Kilroy bug.
+3. Pull AMR Hub gate data via the `amr_hub_get_units` tool on the same server, passing this fleet as `fleetId`. For each unit extract `buyoff220Status`, `buyoff250Status`, `buyoff270Status`, `buyoff280Status`, corresponding `*BlockedReason` fields, and `updatedAt`. Derive `production-ready` = all 4 gates `= Complete`. The tool fails loud on an unreachable Hub or malformed response (never an empty list) -- if it errors, stop and report; if `unitCount` is 0 with a non-zero `totalUnitCount`, the fleet filter matched nothing -- say so rather than packaging an empty fleet as real. No hand-rolled HTTP fallback if the MCP server is missing.
 4. Read the Master Tracker CSV. Extract per-unit `pipelineStatus`, `etaAtFactory`, `projectIdentifier`, `vendorRef`, `hardwareRevision` for units in this fleet.
 5. Cross-reference:
    - Units listed in Master Tracker but not in AMR Hub -> flag as "incoming, not yet ingested."

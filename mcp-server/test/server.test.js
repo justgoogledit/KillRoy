@@ -74,15 +74,62 @@ function serveFixture() {
   });
 }
 
-test('server: lists exactly the amr_hub_get_units tool', async () => {
+test('server: lists exactly the two connector tools', async () => {
   const mcp = startMcp('/nonexistent/.env');
   try {
     await mcp.handshake();
     mcp.send({ jsonrpc: '2.0', id: 2, method: 'tools/list' });
     const { result } = await mcp.recv();
-    assert.deepEqual(result.tools.map((t) => t.name), ['amr_hub_get_units']);
+    assert.deepEqual(
+      result.tools.map((t) => t.name).sort(),
+      ['amr_hub_get_units', 'overmind_get_fleet_state'],
+    );
   } finally {
     mcp.stop();
+  }
+});
+
+test('server: overmind reachability + full-pull plumbing works end to end', async () => {
+  const fixture = readFileSync(
+    join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'Knowledge', 'Sources', 'fixtures', 'overmind-fleet-state.json'),
+    'utf8',
+  );
+  const httpd = createServer((req, res) => {
+    if (req.url.endsWith('/graphql')) {
+      res.writeHead(200, { 'content-type': 'application/json' });
+      res.end(JSON.stringify({ data: { fleet: JSON.parse(fixture) } }));
+    } else {
+      res.writeHead(403); // reachability probe hits the base URL; auth-rejected is fine
+      res.end();
+    }
+  });
+  await new Promise((r) => httpd.listen(0, '127.0.0.1', r));
+  const { port } = httpd.address();
+  const envFile = join(mkdtempSync(join(tmpdir(), 'kilroy-mcp-')), '.env');
+  writeFileSync(envFile, `OVERMIND_BASE_URL_TEMPLATE=http://127.0.0.1:${port}/fleets/{fleet}\n`);
+  const mcp = startMcp(envFile);
+  try {
+    await mcp.handshake();
+
+    const probe = await mcp.callTool(10, 'overmind_get_fleet_state', {
+      fleetId: 'gftx-cybercab-2m-b3-agv', reachabilityOnly: true,
+    });
+    const probeData = JSON.parse(probe.result.content[0].text);
+    assert.equal(probeData.reachable, true);
+    assert.equal(probeData.httpStatus, 403);
+
+    const full = await mcp.callTool(11, 'overmind_get_fleet_state', { fleetId: 'gftx-cybercab-2m-b3-agv' });
+    assert.ok(!full.result.isError);
+    const state = JSON.parse(full.result.content[0].text);
+    assert.equal(state.imageTag, 'v2.24.1.0-42-gbc22f55275');
+    assert.equal(state.robotCount, 9);
+
+    const noFleet = await mcp.callTool(12, 'overmind_get_fleet_state', {});
+    assert.equal(noFleet.result.isError, true);
+    assert.match(noFleet.result.content[0].text, /fleetId must be a non-empty string/);
+  } finally {
+    mcp.stop();
+    await new Promise((r) => httpd.close(r));
   }
 });
 

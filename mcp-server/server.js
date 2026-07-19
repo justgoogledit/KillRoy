@@ -14,6 +14,7 @@ import { fileURLToPath } from 'node:url';
 
 import { loadEnv } from './lib/env.js';
 import { pullAmrUnits } from './lib/amr-hub.js';
+import { pullOvermindFleetState } from './lib/overmind.js';
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -41,6 +42,30 @@ const TOOLS = [
       additionalProperties: false,
     },
   },
+  {
+    name: 'overmind_get_fleet_state',
+    description:
+      'Read Overmind fleet state for one fleet: image tag, robot count, active tracer events, ' +
+      'MFS wiring summary, RobotConfigs.yaml deltas. Read-only, corp-network-only in v1. ' +
+      'With reachabilityOnly=true, just probes the fleet base URL and reports any HTTP response ' +
+      '(auth-rejected included) as reachable -- check-connectors uses that mode. Fails loudly ' +
+      'on network failure, non-2xx (full mode), unparseable body, or missing fields.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        fleetId: {
+          type: 'string',
+          description: 'Required fleet id (e.g. gftx-cybercab-2m-b3-agv) -- fills {fleet} in OVERMIND_BASE_URL_TEMPLATE.',
+        },
+        reachabilityOnly: {
+          type: 'boolean',
+          description: 'If true, only probe reachability of the fleet base URL; no data pull.',
+        },
+      },
+      required: ['fleetId'],
+      additionalProperties: false,
+    },
+  },
 ];
 
 const server = new Server(
@@ -50,50 +75,48 @@ const server = new Server(
 
 server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: TOOLS }));
 
+const fail = (text) => ({ isError: true, content: [{ type: 'text', text }] });
+
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   const { name, arguments: args } = request.params;
 
-  if (name !== 'amr_hub_get_units') {
+  if (!TOOLS.some((t) => t.name === name)) {
     throw new Error(`Unknown tool: ${name}`);
   }
 
   const env = loadEnv(envPath);
   if (env === null) {
     // Same message shape the session-start hook and check-connectors use.
-    return {
-      isError: true,
-      content: [
-        {
-          type: 'text',
-          text: `FAIL: .env not found at ${envPath} -- cp .env.example .env, then fill it in.`,
-        },
-      ],
-    };
+    return fail(`FAIL: .env not found at ${envPath} -- cp .env.example .env, then fill it in.`);
   }
 
   const fleetId = args?.fleetId;
-  if (fleetId !== undefined && (typeof fleetId !== 'string' || fleetId.trim() === '')) {
-    // An empty/blank fleetId is a caller bug, not "no filter" -- silently
-    // widening the query to every unit would be the quiet-fallback behavior
-    // this server exists to eliminate.
-    return {
-      isError: true,
-      content: [
-        { type: 'text', text: 'FAIL: fleetId, when provided, must be a non-empty string. Omit it entirely to get every unit.' },
-      ],
-    };
-  }
 
   try {
-    const result = await pullAmrUnits({
-      baseUrl: env.AMR_HUB_BASE_URL,
+    if (name === 'amr_hub_get_units') {
+      if (fleetId !== undefined && (typeof fleetId !== 'string' || fleetId.trim() === '')) {
+        // An empty/blank fleetId is a caller bug, not "no filter" -- silently
+        // widening the query to every unit would be the quiet-fallback behavior
+        // this server exists to eliminate.
+        return fail('FAIL: fleetId, when provided, must be a non-empty string. Omit it entirely to get every unit.');
+      }
+      const result = await pullAmrUnits({ baseUrl: env.AMR_HUB_BASE_URL, fleetId });
+      return { content: [{ type: 'text', text: JSON.stringify(result) }] };
+    }
+
+    // overmind_get_fleet_state -- fleetId is required here; the lib validates
+    // it (and the template, and the timeout) and throws with specific reasons.
+    const result = await pullOvermindFleetState({
+      baseUrlTemplate: env.OVERMIND_BASE_URL_TEMPLATE,
       fleetId,
+      reachabilityOnly: args?.reachabilityOnly === true,
+      timeoutSec: env.OVERMIND_TIMEOUT_SEC,
     });
     return { content: [{ type: 'text', text: JSON.stringify(result) }] };
   } catch (err) {
     // Loud, specific, and unmistakably not data: the calling skill's fail-loud
     // steps key off this being an error, never an empty result.
-    return { isError: true, content: [{ type: 'text', text: `FAIL: ${err.message}` }] };
+    return fail(`FAIL: ${err.message}`);
   }
 });
 
