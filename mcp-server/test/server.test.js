@@ -74,7 +74,7 @@ function serveFixture() {
   });
 }
 
-test('server: lists exactly the two connector tools', async () => {
+test('server: lists exactly the three connector tools', async () => {
   const mcp = startMcp('/nonexistent/.env');
   try {
     await mcp.handshake();

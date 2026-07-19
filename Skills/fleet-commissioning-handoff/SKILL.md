@@ -96,7 +96,7 @@ If any verify step fails, do not deliver the package -- fix the underlying issue
 ## Examples
 
 **Good trigger:** *"kilroy handoff gftx-cybercab-2m-b3-agv"*
-**Good trigger:** *"package the handoff for cybercab 2m please"* (resolve alias -> fleet name via Master Tracker)
+**Good trigger:** *"package the handoff for gftx-cybercab-2m-b3-agv please"* -- step 1 matches the exact `projectIdentifier` value; there's no alias-resolution built yet (a nickname like "cybercab 2m" falls through to step 1's "not found, ask Jordan" path, not a fuzzy match).
 
 **Bad trigger:** *"what's the status of the fleet"* -- too vague, no fleet named. Ask Jordan which fleet.
 **Bad trigger:** *"show me T3L2_014 progress"* -- single unit, not a fleet package. Use [[Skills/arriving-amr-progress/SKILL|arriving-amr-progress]].

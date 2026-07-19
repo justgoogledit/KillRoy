@@ -100,3 +100,60 @@ test('quoted fields: commas and escaped quotes inside quotes parse correctly', (
   assert.equal(r.rows[0].note, 'backorder, vendor says "Q3"');
   assert.equal(r.rows[0].projectIdentifier, 'fleet-a');
 });
+
+test('BOM: a leading byte-order mark does not defeat the comment-banner skip', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'kilroy-csv-'));
+  const p = join(dir, 'bom.csv');
+  writeFileSync(p, '﻿# SYNTHETIC FIXTURE DATA\nunitId,projectIdentifier\nT3L2_001,fleet-a\n');
+  const r = readMasterTracker({ csvPath: p, staleWarnHours: OK_THRESHOLD });
+  assert.deepEqual(r.header, ['unitId', 'projectIdentifier']);
+  assert.equal(r.rows[0].unitId, 'T3L2_001');
+});
+
+test('CRLF embedded inside a quoted multi-line field survives the comment-banner skip unchanged', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'kilroy-csv-'));
+  const p = join(dir, 'crlf.csv');
+  writeFileSync(p, '# banner\r\nunitId,note\r\nT3L2_001,"line1\r\nline2"\r\n');
+  const r = readMasterTracker({ csvPath: p, staleWarnHours: OK_THRESHOLD });
+  assert.equal(r.rows[0].note, 'line1\r\nline2');
+});
+
+test('fail loud: a ragged row (wrong column count) refuses to guess which column shifted', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'kilroy-csv-'));
+  const p = join(dir, 'ragged.csv');
+  writeFileSync(p, 'unitId,note,projectIdentifier\nT3L2_001,unquoted, comma note,fleet-a\n');
+  assert.throws(
+    () => readMasterTracker({ csvPath: p, staleWarnHours: OK_THRESHOLD }),
+    /malformed row \(data row 1\): expected 3 columns, found 4/,
+  );
+});
+
+test('fail loud: filtering by projectIdentifier when the column does not exist', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'kilroy-csv-'));
+  const p = join(dir, 'no-project-col.csv');
+  writeFileSync(p, 'unitId,note\nT3L2_001,ok\n');
+  assert.throws(
+    () => readMasterTracker({ csvPath: p, staleWarnHours: OK_THRESHOLD, projectIdentifier: 'fleet-a' }),
+    /has no "projectIdentifier" column/,
+  );
+});
+
+test('data cells are trimmed like the header, so a stray space after a comma does not break the filter', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'kilroy-csv-'));
+  const p = join(dir, 'padded.csv');
+  writeFileSync(p, 'unitId,projectIdentifier\nT3L2_001, fleet-a\n');
+  const r = readMasterTracker({ csvPath: p, staleWarnHours: OK_THRESHOLD, projectIdentifier: 'fleet-a' });
+  assert.equal(r.rowCount, 1);
+});
+
+test('staleness boundary: age past the threshold by a fraction of an hour still counts as stale', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'kilroy-csv-'));
+  const p = join(dir, 'boundary.csv');
+  writeFileSync(p, 'unitId,projectIdentifier\nT3L2_001,fleet-a\n');
+  const now = Date.now();
+  const twentyFourAndAHalfHoursAgo = new Date(now - 24.5 * 3600000);
+  utimesSync(p, twentyFourAndAHalfHoursAgo, twentyFourAndAHalfHoursAgo);
+  const r = readMasterTracker({ csvPath: p, staleWarnHours: OK_THRESHOLD, now });
+  assert.equal(r.ageHours, 24);
+  assert.equal(r.stale, true);
+});

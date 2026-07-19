@@ -44,6 +44,23 @@ function parseCsv(text) {
   return rows;
 }
 
+// Strips leading '#'-prefixed comment lines by offset into the original
+// string, preserving whatever line-ending convention the rest of the text
+// uses -- a global split(/\r?\n/)/join('\n') would silently rewrite CRLF to
+// LF inside a quoted field's embedded newline too, not just between rows.
+function stripCommentBanner(text) {
+  let offset = 0;
+  while (offset < text.length) {
+    const newlineIndex = text.indexOf('\n', offset);
+    const lineEnd = newlineIndex === -1 ? text.length : newlineIndex + 1;
+    const rawLine = text.slice(offset, newlineIndex === -1 ? text.length : newlineIndex);
+    const line = rawLine.endsWith('\r') ? rawLine.slice(0, -1) : rawLine;
+    if (!line.startsWith('#')) break;
+    offset = lineEnd;
+  }
+  return text.slice(offset);
+}
+
 // Core Master Tracker read. Fail-loud contract: a missing/unreadable file, a
 // missing header, or a bad threshold throws with the reason named -- never an
 // empty row list. Staleness is a WARN-grade flag in the result, not an error:
@@ -77,13 +94,19 @@ export function readMasterTracker({ csvPath, staleWarnHours, projectIdentifier, 
     throw new Error(`Master Tracker CSV unreadable at ${csvPath}: ${cause.code ?? cause.message}.`, { cause });
   }
 
+  // Excel's "CSV UTF-8" export (the documented SharePoint path) prepends a
+  // byte-order mark. Strip it before any line-based logic runs, rather than
+  // relying on String#trim() incidentally eating it later.
+  if (text.charCodeAt(0) === 0xfeff) {
+    text = text.slice(1);
+  }
+
   // The fixture convention (and a safe general habit): leading lines starting
   // with '#' are comments, not data -- the fixture's first line is its
-  // SYNTHETIC FIXTURE DATA banner.
-  const lines = text.split(/\r?\n/);
-  let start = 0;
-  while (start < lines.length && lines[start].startsWith('#')) start += 1;
-  const body = lines.slice(start).join('\n');
+  // SYNTHETIC FIXTURE DATA banner. Strip only those leading lines by offset
+  // rather than split/join-ing the whole text, so CRLF sequences embedded in
+  // a quoted multi-line field further down are never rewritten.
+  const body = stripCommentBanner(text);
 
   const parsed = parseCsv(body).filter((r) => !(r.length === 1 && r[0].trim() === ''));
   if (parsed.length === 0) {
@@ -95,10 +118,17 @@ export function readMasterTracker({ csvPath, staleWarnHours, projectIdentifier, 
     throw new Error(`Master Tracker CSV at ${csvPath} has an implausible header row (${JSON.stringify(parsed[0])}). Unexpected shape -- refusing to guess.`);
   }
 
-  const allRows = parsed.slice(1).map((cells) => {
+  if (projectIdentifier && !header.includes('projectIdentifier')) {
+    throw new Error(`Master Tracker CSV at ${csvPath} has no "projectIdentifier" column (header: ${JSON.stringify(header)}). Cannot filter by fleet -- refusing to guess which column it renamed to.`);
+  }
+
+  const allRows = parsed.slice(1).map((cells, idx) => {
+    if (cells.length !== header.length) {
+      throw new Error(`Master Tracker CSV at ${csvPath} has a malformed row (data row ${idx + 1}): expected ${header.length} columns, found ${cells.length}. Refusing to guess which column shifted.`);
+    }
     const obj = {};
     header.forEach((h, i) => {
-      obj[h] = cells[i] ?? '';
+      obj[h] = cells[i].trim();
     });
     return obj;
   });
@@ -107,7 +137,8 @@ export function readMasterTracker({ csvPath, staleWarnHours, projectIdentifier, 
     ? allRows.filter((r) => r.projectIdentifier === projectIdentifier)
     : allRows;
 
-  const ageHours = Math.floor((now - stat.mtimeMs) / 3600000);
+  const ageMs = now - stat.mtimeMs;
+  const ageHours = Math.floor(ageMs / 3600000);
 
   return {
     rowCount: rows.length,
@@ -119,6 +150,6 @@ export function readMasterTracker({ csvPath, staleWarnHours, projectIdentifier, 
     mtimeIso: new Date(stat.mtimeMs).toISOString(),
     ageHours,
     staleWarnHours: threshold,
-    stale: ageHours > threshold,
+    stale: ageMs > threshold * 3600000,
   };
 }
