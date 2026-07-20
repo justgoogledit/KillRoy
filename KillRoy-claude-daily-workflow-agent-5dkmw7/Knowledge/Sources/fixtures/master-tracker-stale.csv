@@ -1,0 +1,15 @@
+# SYNTHETIC FIXTURE DATA -- NOT A REAL MASTER TRACKER EXPORT. For offline dry-run testing of Kilroy's CSV-freshness Verify step only. Do not cite any row from this file in a real handoff delivered to Jordan. Content is identical to master-tracker.csv -- the point of this file is its mtime, not its data. See Knowledge/Sources/fixtures/README.md: touch -d "48 hours ago" this file before a dry-run to trigger the MASTER_TRACKER_STALE_WARN_HOURS=24 warning. (This line is a comment -- the real header row is next.)
+unitId,pipelineStatus,etaAtFactory,projectIdentifier,vendorRef,hardwareRevision
+T3L2_038,On-site - production,2026-06-10,gftx-cybercab-2m-b3-agv,VR-2026-0038,Rev C
+T3L2_039,On-site - commissioning,2026-06-12,gftx-cybercab-2m-b3-agv,VR-2026-0039,Rev C
+T3L2_040,On-site - commissioning,2026-06-12,gftx-cybercab-2m-b3-agv,VR-2026-0040,Rev C
+T3L2_041,On-site - commissioning,2026-06-18,gftx-cybercab-2m-b3-agv,VR-2026-0041,Rev C
+T3L2_042,On-site - commissioning,2026-06-18,gftx-cybercab-2m-b3-agv,VR-2026-0042,Rev C
+T3L2_043,On-site - commissioning,2026-06-20,gftx-cybercab-2m-b3-agv,VR-2026-0043,Rev C
+T3L2_044,On-site - commissioning,2026-06-20,gftx-cybercab-2m-b3-agv,VR-2026-0044,Rev C
+T3L2_045,On-site - commissioning,2026-06-25,gftx-cybercab-2m-b3-agv,VR-2026-0045,Rev C
+T3L2_046,On-site - commissioning,2026-06-25,gftx-cybercab-2m-b3-agv,VR-2026-0046,Rev C
+T3L2_048,On-site - commissioning,2026-07-01,gftx-cybercab-2m-b3-agv,VR-2026-0048,Rev D
+T3L2_049,On-site - commissioning,2026-07-01,gftx-cybercab-2m-b3-agv,VR-2026-0049,Rev D
+T3L2_050,On-site - commissioning,2026-07-05,gftx-cybercab-2m-b3-agv,VR-2026-0050,Rev D
+T3L2_051,In-transit,2026-07-25,gftx-cybercab-2m-b3-agv,VR-2026-0051,Rev D
