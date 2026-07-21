@@ -2,9 +2,9 @@ import { readFileSync } from 'node:fs';
 
 // Hand-rolled .env parser instead of a dotenv dependency, for the same reason
 // .claude/hooks/session-start.sh parses line by line instead of `source`-ing:
-// MASTER_TRACKER_CSV_PATH's default value contains an unquoted space
-// ("OneDrive - Tesla"), and 20 lines beats a dependency for a repo that keeps
-// tooling to the minimum the MCP requirement forces.
+// values may contain unquoted spaces (e.g. Windows paths under "OneDrive -
+// Tesla"), and 20 lines beats a dependency for a repo that keeps tooling to
+// the minimum the MCP requirement forces.
 //
 // Values are taken verbatim from the first `=` to end of line (minus a trailing
 // CR); no quote stripping, no escapes -- matching what the bash hook and the

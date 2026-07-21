@@ -10,9 +10,9 @@ outputs: a `## Personal Triage` section, either merged into run-daily-workflow's
 
 ## When to use
 
-- run-daily-workflow's morning phase, as its third orchestrated input alongside the AMR gate board and the Planner digest.
+- run-daily-workflow's morning phase, as its second orchestrated input alongside the Planner digest.
 - Jordan asks "what's on my plate today" / "triage my inbox" / "anything I'm missing on Teams" outside the daily cadence.
-- Not for AMR gate data -- this skill only touches mail, Teams, and Planner. [[Skills/arriving-amr-progress/SKILL|arriving-amr-progress]] and the Planner digest already in [[Skills/run-daily-workflow/SKILL|run-daily-workflow]] cover that ground.
+- Not for AMR/fleet data -- this skill only touches mail, Teams, and Planner. The Planner digest already in [[Skills/run-daily-workflow/SKILL|run-daily-workflow]] covers that ground; fleet questions go to the `overmind` MCP.
 
 ## Applies
 
@@ -62,8 +62,8 @@ outputs: a `## Personal Triage` section, either merged into run-daily-workflow's
 ## Examples
 
 **Good trigger:** *"kilroy triage"* outside the daily cadence -> standalone Personal Triage section, mail/Teams/Planner pulled fresh, returned directly to Jordan.
-**Good trigger:** run-daily-workflow's morning phase calling this skill as its third input -> section merged into the day file under the Planner digest.
-**Bad trigger:** *"anything change on the AMR side"* -> that's [[Skills/run-daily-workflow/SKILL|run-daily-workflow]]'s midday phase or [[Skills/arriving-amr-progress/SKILL|arriving-amr-progress]] directly, not this skill.
+**Good trigger:** run-daily-workflow's morning phase calling this skill as its second input -> section merged into the day file under the Planner digest.
+**Bad trigger:** *"anything change on the AMR side"* -> that's the `overmind` MCP (`AskOvermind`), not this skill.
 
 ## Anti-patterns
 

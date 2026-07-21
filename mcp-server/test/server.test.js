@@ -14,10 +14,6 @@ import { createInterface } from 'node:readline';
 // the spawned server at temp .env files; the repo root is never touched.
 
 const serverPath = join(dirname(fileURLToPath(import.meta.url)), '..', 'server.js');
-const fixturePath = join(
-  dirname(fileURLToPath(import.meta.url)), '..', '..',
-  'Knowledge', 'Sources', 'fixtures', 'amr-hub-response.json',
-);
 
 function startMcp(envPath) {
   const proc = spawn('node', [serverPath], {
@@ -61,28 +57,15 @@ function startMcp(envPath) {
   };
 }
 
-function serveFixture() {
-  const body = readFileSync(fixturePath);
-  const httpd = createServer((req, res) => {
-    res.writeHead(req.url === '/api/amrs' ? 200 : 404, { 'content-type': 'application/json' });
-    res.end(req.url === '/api/amrs' ? body : undefined);
-  });
-  return new Promise((resolve) => {
-    httpd.listen(0, '127.0.0.1', () =>
-      resolve({ port: httpd.address().port, close: () => new Promise((r) => httpd.close(r)) }),
-    );
-  });
-}
-
-test('server: lists exactly the four connector tools', async () => {
+test('server: lists exactly the one remaining connector tool', async () => {
   const mcp = startMcp('/nonexistent/.env');
   try {
     await mcp.handshake();
     mcp.send({ jsonrpc: '2.0', id: 2, method: 'tools/list' });
     const { result } = await mcp.recv();
     assert.deepEqual(
-      result.tools.map((t) => t.name).sort(),
-      ['amr_hub_get_units', 'master_tracker_get_rows', 'overmind_get_fleet_state', 'planner_get_tasks'],
+      result.tools.map((t) => t.name),
+      ['overmind_get_fleet_state'],
     );
   } finally {
     mcp.stop();
@@ -140,86 +123,6 @@ test('server: overmind reachability + full-pull plumbing works end to end', asyn
   }
 });
 
-test('server: master tracker plumbing works end to end (rows, staleness, filter, bad threshold)', async () => {
-  const fixtureCsv = join(
-    dirname(fileURLToPath(import.meta.url)), '..', '..', 'Knowledge', 'Sources', 'fixtures', 'master-tracker.csv',
-  );
-  const envFile = join(mkdtempSync(join(tmpdir(), 'kilroy-mcp-')), '.env');
-  writeFileSync(
-    envFile,
-    `MASTER_TRACKER_CSV_PATH=${fixtureCsv}\nMASTER_TRACKER_STALE_WARN_HOURS=24\n`,
-  );
-  const mcp = startMcp(envFile);
-  try {
-    await mcp.handshake();
-    const all = await mcp.callTool(20, 'master_tracker_get_rows', {});
-    assert.ok(!all.result.isError);
-    const data = JSON.parse(all.result.content[0].text);
-    assert.equal(data.totalRowCount, 13);
-    assert.equal(typeof data.stale, 'boolean');
-    assert.equal(data.staleWarnHours, 24);
-
-    const filtered = await mcp.callTool(21, 'master_tracker_get_rows', {
-      projectIdentifier: 'gftx-kyle-2r-seats-agv',
-    });
-    const fData = JSON.parse(filtered.result.content[0].text);
-    assert.equal(fData.rowCount, 0);
-    assert.equal(fData.totalRowCount, 13);
-  } finally {
-    mcp.stop();
-  }
-
-  const badEnv = join(mkdtempSync(join(tmpdir(), 'kilroy-mcp-')), '.env');
-  writeFileSync(badEnv, `MASTER_TRACKER_CSV_PATH=${fixtureCsv}\nMASTER_TRACKER_STALE_WARN_HOURS=soon\n`);
-  const mcp2 = startMcp(badEnv);
-  try {
-    await mcp2.handshake();
-    const { result } = await mcp2.callTool(22, 'master_tracker_get_rows', {});
-    assert.equal(result.isError, true);
-    assert.match(result.content[0].text, /MASTER_TRACKER_STALE_WARN_HOURS is not a positive number: "soon"/);
-  } finally {
-    mcp2.stop();
-  }
-});
-
-test('server: planner tool forwards .env vars into validation, and the reachabilityOnly boolean guard applies', async () => {
-  // No live Graph API call is exercisable from this sandbox (fixed Microsoft
-  // cloud endpoints, no test-only .env override -- see test/planner.test.js
-  // for the real HTTP-orchestration coverage against a local mock server).
-  // What's provable here without network access: env plumbing and the
-  // fail-fast validation/type-guard paths, which throw before any fetch.
-  const envFile = join(mkdtempSync(join(tmpdir(), 'kilroy-mcp-')), '.env');
-  writeFileSync(envFile, 'PLANNER_PLAN_IDS=some-plan-id\n');
-  const mcp = startMcp(envFile);
-  try {
-    await mcp.handshake();
-
-    // GRAPH_API_TENANT_ID was never set -- the lib's validation names it.
-    const missingTenant = await mcp.callTool(23, 'planner_get_tasks', {});
-    assert.equal(missingTenant.result.isError, true);
-    assert.match(missingTenant.result.content[0].text, /GRAPH_API_TENANT_ID is not set/);
-
-    // A string "true" must be rejected, not silently run the full pull.
-    const stringTrue = await mcp.callTool(24, 'planner_get_tasks', { reachabilityOnly: 'true' });
-    assert.equal(stringTrue.result.isError, true);
-    assert.match(stringTrue.result.content[0].text, /reachabilityOnly, when provided, must be a boolean/);
-  } finally {
-    mcp.stop();
-  }
-
-  const noPlanIds = join(mkdtempSync(join(tmpdir(), 'kilroy-mcp-')), '.env');
-  writeFileSync(noPlanIds, 'GRAPH_API_TENANT_ID=t\nGRAPH_API_CLIENT_ID=c\nGRAPH_API_CLIENT_SECRET=s\n');
-  const mcp2 = startMcp(noPlanIds);
-  try {
-    await mcp2.handshake();
-    const { result } = await mcp2.callTool(25, 'planner_get_tasks', {});
-    assert.equal(result.isError, true);
-    assert.match(result.content[0].text, /PLANNER_PLAN_IDS is not set/);
-  } finally {
-    mcp2.stop();
-  }
-});
-
 test('server: bad OVERMIND_TIMEOUT_SEC in .env fails loud, never a silent default', async () => {
   const envFile = join(mkdtempSync(join(tmpdir(), 'kilroy-mcp-')), '.env');
   writeFileSync(
@@ -243,7 +146,7 @@ test('server: missing .env returns isError with the cp instruction, never data',
   const mcp = startMcp('/nonexistent/definitely/.env');
   try {
     await mcp.handshake();
-    const { result } = await mcp.callTool(3, 'amr_hub_get_units', {});
+    const { result } = await mcp.callTool(3, 'overmind_get_fleet_state', { fleetId: 'gftx-cybercab-2m-b3-agv' });
     assert.equal(result.isError, true);
     assert.match(result.content[0].text, /\.env not found/);
     assert.match(result.content[0].text, /cp \.env\.example \.env/);
@@ -252,73 +155,21 @@ test('server: missing .env returns isError with the cp instruction, never data',
   }
 });
 
-test('server: happy path through a temp .env returns all 13 fixture units', async () => {
-  const srv = await serveFixture();
-  const envFile = join(mkdtempSync(join(tmpdir(), 'kilroy-mcp-')), '.env');
-  writeFileSync(envFile, `AMR_HUB_BASE_URL=http://127.0.0.1:${srv.port}\n`);
-  const mcp = startMcp(envFile);
-  try {
-    await mcp.handshake();
-    const { result } = await mcp.callTool(4, 'amr_hub_get_units', {});
-    assert.ok(!result.isError);
-    const data = JSON.parse(result.content[0].text);
-    assert.equal(data.unitCount, 13);
-    assert.equal(data.units.find((u) => u.unitId === 'T3L2_050').buyoff250Status, null);
-  } finally {
-    mcp.stop();
-    await srv.close();
-  }
-});
-
-test('server: fleetId argument reaches the filter (counts prove it)', async () => {
-  const srv = await serveFixture();
-  const envFile = join(mkdtempSync(join(tmpdir(), 'kilroy-mcp-')), '.env');
-  writeFileSync(envFile, `AMR_HUB_BASE_URL=http://127.0.0.1:${srv.port}\n`);
-  const mcp = startMcp(envFile);
-  try {
-    await mcp.handshake();
-    const { result } = await mcp.callTool(5, 'amr_hub_get_units', { fleetId: 'gftx-kyle-2r-seats-agv' });
-    const data = JSON.parse(result.content[0].text);
-    assert.equal(data.unitCount, 0);
-    assert.equal(data.totalUnitCount, 13);
-    assert.equal(data.fleetId, 'gftx-kyle-2r-seats-agv');
-  } finally {
-    mcp.stop();
-    await srv.close();
-  }
-});
-
-test('server: empty-string fleetId is rejected, not silently widened to all units', async () => {
-  const srv = await serveFixture();
-  const envFile = join(mkdtempSync(join(tmpdir(), 'kilroy-mcp-')), '.env');
-  writeFileSync(envFile, `AMR_HUB_BASE_URL=http://127.0.0.1:${srv.port}\n`);
-  const mcp = startMcp(envFile);
-  try {
-    await mcp.handshake();
-    const { result } = await mcp.callTool(6, 'amr_hub_get_units', { fleetId: '' });
-    assert.equal(result.isError, true);
-    assert.match(result.content[0].text, /fleetId, when provided, must be a non-empty string/);
-  } finally {
-    mcp.stop();
-    await srv.close();
-  }
-});
-
 test('server: pull failure surfaces as isError FAIL text, never an empty result', async () => {
   // A just-freed ephemeral port: guaranteed refusable, unlike low ports that
   // some sandboxes reject with other codes.
-  const srv = await serveFixture();
-  const deadPort = srv.port;
-  await srv.close();
+  const httpd = createServer(() => {});
+  await new Promise((r) => httpd.listen(0, '127.0.0.1', r));
+  const deadPort = httpd.address().port;
+  await new Promise((r) => httpd.close(r));
   const envFile = join(mkdtempSync(join(tmpdir(), 'kilroy-mcp-')), '.env');
-  writeFileSync(envFile, `AMR_HUB_BASE_URL=http://127.0.0.1:${deadPort}\n`);
+  writeFileSync(envFile, `OVERMIND_BASE_URL_TEMPLATE=http://127.0.0.1:${deadPort}/fleets/{fleet}\n`);
   const mcp = startMcp(envFile);
   try {
     await mcp.handshake();
-    const { result } = await mcp.callTool(7, 'amr_hub_get_units', {});
+    const { result } = await mcp.callTool(7, 'overmind_get_fleet_state', { fleetId: 'gftx-cybercab-2m-b3-agv' });
     assert.equal(result.isError, true);
-    assert.match(result.content[0].text, /^FAIL: AMR Hub unreachable/);
-    assert.match(result.content[0].text, /ECONNREFUSED/);
+    assert.match(result.content[0].text, /^FAIL: /);
   } finally {
     mcp.stop();
   }

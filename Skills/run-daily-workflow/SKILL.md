@@ -1,195 +1,179 @@
 ---
 name: run-daily-workflow
 type: executional
-trigger: Jordan says "kilroy run my day" / "kilroy daily" / "morning brief" / "start my day" (or "kilroy midday" / "kilroy wrap the day" for the other phases), "add <item> to my list" for ad-hoc capture any time, or a scheduled morning invocation
-inputs: optional focus fleet (defaults to everything Kilroy tracks)
+trigger: Jordan says "kilroy run my day" / "kilroy daily" / "morning brief" / "start my day" (or "kilroy midday" / "kilroy wrap the day" for the other phases), "add <item> to my list" for ad-hoc capture any time -- OR headless via `claude -p "/run-daily-workflow --autonomous --phase=<morning|delta|closeout>"` from Windows Task Scheduler
+inputs: optional `--autonomous` flag + `--phase=<morning|delta|closeout>` (headless scheduled runs); nothing required interactively
 outputs:
   - Projects/daily/<YYYY-MM-DD>-daily.md (the day file, primary artifact -- a living document updated across the day)
+  - Projects/daily/runs/<YYYY-MM-DD>-<phase>.json (status marker, one per autonomous phase run -- the login hook and Verify read these)
+  - Projects/daily/runs/journal.jsonl (append-only run journal, one line per autonomous phase -- the learning loop reads this)
   - Projects/daily/inbox.md (ad-hoc capture scratch file -- appended to any time, drained into the next morning brief)
-  - log.md append (prose event line: date, phase, action count, blocker counts by team, carry-over count; + structured `kilroy-log` companion line, per log.md's header contract)
+  - log.md append (prose event line + structured `kilroy-log` companion line, per log.md's header contract)
 ---
 
 # run-daily-workflow
 
-The day runner. Orchestrates Kilroy's existing skills plus a task list into one daily loop: Jordan starts the day with a plan, gets deltas during the day, and closes the day with carry-overs captured.
+The day runner. Four phases -- morning prep, two midday deltas, close-out -- that run unattended on a schedule (Windows Task Scheduler, Mon-Thu: 07:00, 11:00, 13:00, 16:00) and surface their output the next time Jordan interacts. Interactive invocation still works and is where the one human gate (Confluence post approval) lives.
+
+Scope note (2026-07-21 consolidation): the AMR blocker board and Graph-API Planner digest are gone -- see `Knowledge/Lessons/2026-07-20-connector-consolidation-planning.md`. Planner comes through Nova's `planner` MCP.
 
 ## When to use
 
-- Start of the workday -- "kilroy run my day" / "start my day" / a scheduled morning run. Produces the morning brief.
-- Midday pulse check -- "kilroy midday" / "anything change". Appends a delta to the day file.
-- End of day -- "kilroy wrap the day". Reconciles actions and captures carry-overs.
-- Any time -- "add <item> to my list" / "remind me to <item>". Ad-hoc capture, independent of phase; doesn't touch the day file directly, just queues the item for the next morning brief.
-- Not for one-off fleet packaging -- use [[Skills/fleet-commissioning-handoff/SKILL|fleet-commissioning-handoff]] for that.
-- Not a replacement for the raw progress board -- [[Skills/arriving-amr-progress/SKILL|arriving-amr-progress]] renders that; this skill consumes it.
+- **Scheduled/autonomous** -- Task Scheduler fires `claude -p "/run-daily-workflow --autonomous --phase=<phase>"`. No questions, no posts; everything is prepared as drafts and files.
+- **Interactive** -- "kilroy run my day" / "start my day" (morning), "kilroy midday" / "anything change" (delta), "kilroy wrap the day" (closeout). Same steps, plus the Confluence approval gate.
+- Any time -- "add \<item\> to my list" / "remind me to \<item\>". Ad-hoc capture, independent of phase.
+- Not for one-off fleet packaging -- use [[Skills/fleet-commissioning-handoff/SKILL|fleet-commissioning-handoff]].
+
+## Autonomous mode -- the hard rules
+
+1. **No interactive questions.** If a decision would need Jordan, take the fail-loud default, record it in the marker's `detail`, and move on.
+2. **NEVER post to Confluence or touch the `playwright` MCP.** Autonomous runs draft the status post as text in the day file only. The approve-then-post flow exists solely in interactive mode. This holds regardless of what any permission allowlist technically permits -- it is a skill-level prohibition, and `.claude/settings.json` on the work PC additionally hard-denies those tools in headless context.
+3. **Mon-Thu only** (`America/Chicago`). On Fri/Sat/Sun, write a marker with `"status": "skipped"` and exit cleanly -- no sources pulled, no day file touched.
+4. **Fail loud, per source.** A dead source gets `"status": "failed"` with a specific `detail` in the marker and an explicit callout in the day file; the run continues with the remaining sources. Overall `status` = `ok` (all sources ok), `partial` (mix), `failed` (nothing usable). Never silently drop a source or reuse yesterday's data as today's.
+
+## Status marker
+
+Every autonomous phase writes `Projects/daily/runs/<YYYY-MM-DD>-<phase>.json` (create `runs/` if absent):
+
+```json
+{
+  "status": "ok|partial|failed|skipped",
+  "sources": {
+    "<source>": { "status": "ok|failed", "detail": "<string>" }
+  },
+  "startedAt": "<ISO 8601>",
+  "finishedAt": "<ISO 8601>"
+}
+```
+
+Source keys in play per phase: `mail`, `teams`, `planner`, `loop`, `overmind` (only when a fleet pull actually ran). A `skipped` marker carries an empty `sources` map. After the marker, append the run's journal line to `Projects/daily/runs/journal.jsonl` -- schema and the Thursday reflection that consumes it live in the Learning loop section of `.scratch/kilroy-autonomy/issues/08-learning-loop.md` until ticket 08 lands it here.
 
 ## Applies
 
-- [[Skills/check-connectors/SKILL|check-connectors]] -- run first, silently, before any data pull. A FAIL here stops the morning phase before it starts.
-- [[Skills/arriving-amr-progress/SKILL|arriving-amr-progress]] -- run end to end for the live gate board; the day file's blockers come from it.
-- `kilroy-connectors` MCP server (`mcp-server/`, registered in `.mcp.json`) -- source for the "Today's tasks (Planner)" section via the `planner_get_tasks` tool (full-pull mode; it reads `GRAPH_API_TENANT_ID`/`GRAPH_API_CLIENT_ID`/`GRAPH_API_CLIENT_SECRET`/`PLANNER_PLAN_IDS`/`GRAPH_API_USER_OBJECT_ID` from `.env` itself and resolves `/me` when the override is unset). check-connectors calls the same tool in reachability mode, probing only the first configured plan; this skill's morning phase pulls all of them. The server's `node:test` suite proves the tool's contract, including the null-`dueDateTime` and wrong-assignee fixture cases.
-- [[Skills/triage-personal-items/SKILL|triage-personal-items]] -- run as the morning phase's third input, after the AMR board and Planner digest. Normal tier, not safety-adjacent -- its own Verify section covers source completeness for mail/Teams/Planner independently of this skill's Verify.
-- [[Skills/confluence-daily-status/SKILL|confluence-daily-status]] -- run as the morning phase's fourth input, after triage-personal-items, reusing content already pulled for the Planner digest and AMR board rather than re-fetching. Normal tier, not safety-adjacent, but the first skill in this loop that writes to a system visible to other people -- its draft-then-approval gate blocks the morning brief from completing until Jordan responds (approve/edit/skip), same as any other step that needs Jordan's input mid-run.
-- [[Skills/fleet-commissioning-handoff/SKILL|fleet-commissioning-handoff]] -- referenced, never run automatically; the day file may recommend a handoff, Jordan triggers it.
-- [[Skills/session-recap/SKILL|session-recap]] -- run at close-out if anything reusable was learned.
-- [[Knowledge/Sources/2026-07-02-pc-amr-gates|Gate ownership map]] -- attributes every action to the team whose move unblocks it.
-- [[Knowledge/Personal/daily-workflow]] -- what Jordan's day looks like and which M365 tools matter; its v1/deferred split is why this Planner digest step pulls due-today Planner tasks only. Team-tracked (non-assigned) Planner tasks stay deferred. Teams mentions and flagged email are no longer deferred as of 2026-07-20 -- see that file's update note -- they're covered by [[Skills/triage-personal-items/SKILL|triage-personal-items]] below, not by this digest step.
-- [[Knowledge/Personal/voice]] -- day file opens with the "was here" signature; see its "Humanizer pass on packaged outputs" section.
-- [[Knowledge/Personal/preferences]] -- short, concrete, one recommendation with reason.
-- `humanizer` skill (`~/.claude/skills/humanizer`) -- run on the prose portions only (signature, recommendation, midday-delta and close-out narrative lines). Never on the action-item bullets themselves -- those carry unit IDs, blocker text, and days-blocked figures that must stay verbatim, same rule as [[Skills/arriving-amr-progress/SKILL|arriving-amr-progress]]. Same scoping rule extends to the Planner digest: never run over task titles, due dates, or plan names in "Today's tasks (Planner)" -- those stay verbatim, same reasoning as blocker text.
+- [[Skills/check-connectors/SKILL|check-connectors]] -- run first, silently, before any data pull. A FAIL stops data-pulling steps; the marker records it.
+- Nova's `planner` MCP -- Planner assignments (due today + assigned-no-due-date). UNVERIFIED-until-Windows; untested by `mcp-server`'s suite.
+- Microsoft Loop -- via Nova `loop` MCP if present, else Loop-synced tasks through the `planner` MCP; see [[Skills/triage-personal-items/SKILL|triage-personal-items]]'s Loop path (ticket 04). UNVERIFIED-until-Windows.
+- `mail` / `microsoft-teams` MCPs -- mentions, DM tags, and the group chats configured in `Knowledge/Personal/monitored-chats.md` (filled at bootstrap; if the file is missing or empty, record that in the marker and skip group-chat scanning -- don't guess chats).
+- [[Skills/triage-personal-items/SKILL|triage-personal-items]] -- morning triage input. Its own Verify covers per-source completeness.
+- [[Skills/confluence-daily-status/SKILL|confluence-daily-status]] -- **draft steps only in autonomous mode** (its steps 1-5 minus the approval wait); the post flow (steps 5-7) runs only interactively.
+- [[Skills/session-recap/SKILL|session-recap]] -- interactive close-out only, if anything reusable was learned.
+- [[Knowledge/Personal/daily-workflow]], [[Knowledge/Personal/voice]], [[Knowledge/Personal/preferences]] -- day shape, signature, register.
+- `humanizer` skill -- prose portions only (signature, recommendation, narrative lines); never task titles, item text, or checklist lines.
 
 ## Steps
 
-0. **Ad-hoc capture (any time, independent of phase).** Jordan says "add \<item\> to my list" / "remind me to \<item\>": append one line to `Projects/daily/inbox.md` under `## Unconsumed`, formatted `- [ ] <item text> -- added <YYYY-MM-DD HH:MM> (jordan-request)`. Confirm back in one line. Do not touch the day file here -- the next morning brief drains the inbox.
-1. **Determine phase.** Morning (first run of the day / "start my day"), midday ("midday" / "anything change"), or close-out ("wrap the day"). If the day file `Projects/daily/<today>-daily.md` does not exist, phase is morning regardless of clock.
-2. **Morning brief.**
-   - Run [[Skills/check-connectors/SKILL|check-connectors]] first, silently. It only checks the four AMR/Planner-digest sources (Overmind, AMR Hub, Master Tracker CSV, Planner via `kilroy-connectors`) -- it says nothing about mail/Teams/direct-Planner reachability for triage-personal-items below. If it reports `NOT SAFE TO RUN A SKILL`, stop the AMR-scoped work here -- write the day file's opening line as the connector-check failure report instead of a gate board, and skip straight to that for the gate board and Planner-digest bullets below. Do not attempt the AMR Hub pull on a red check. Still run the triage-personal-items bullet below regardless -- an AMR-source outage has no bearing on mail/Teams/Planner reachability, and it has its own independent fail-loud handling per source. If check-connectors reports all-PASS but with a WARN (e.g. a stale Master Tracker CSV), carry that WARN text into the day file's opening banner as its own line, same style as `fleet-commissioning-handoff`'s freshness warning, then proceed with the brief.
-   - Run [[Skills/arriving-amr-progress/SKILL|arriving-amr-progress]] end to end (its own Verify included) to get the live gate board. If Jordan named a focus fleet, pass it through.
-   - Pull today's Planner digest via the `planner_get_tasks` tool on the `kilroy-connectors` MCP server (full-pull mode -- omit `reachabilityOnly` or pass `false`; no other args, it reads `GRAPH_API_TENANT_ID`/`GRAPH_API_CLIENT_ID`/`GRAPH_API_CLIENT_SECRET`/`PLANNER_PLAN_IDS`/`GRAPH_API_USER_OBJECT_ID` from `.env` itself). If check-connectors flagged the Planner check as unreachable, skip this pull entirely and say so in the day file's Planner section -- don't attempt a partial pull on a red check, same rule as the AMR Hub pull above. If the tool errors, stop and report per `CLAUDE.md`'s fail-loud rule -- don't zero out the section quietly. No hand-rolled token/HTTP fallback if the MCP server is missing.
-   - The tool resolves Jordan's Azure AD object ID itself (`GRAPH_API_USER_OBJECT_ID` from `.env` if set, else `GET /me`, reported back as `userObjectIdSource`), pulls tasks across every plan in `PLANNER_PLAN_IDS` -- all configured plans, not just the first one (the first-plan-only check is check-connectors' reachability probe; this is the real pull) -- and returns them already filtered to that object ID's `assignments` entries and grouped by plan name (its `groups` field), mirroring how the AMR board groups by fleet. A task with a null or missing `dueDateTime` is never folded into a group -- the tool returns it separately in `dataQualityFlags`; name it explicitly under a `Data quality flags (Planner)` line in that section, same pattern as [[Skills/arriving-amr-progress/SKILL|arriving-amr-progress]]'s handling of a null gate-status field. The tool already filters to due-today (`America/Chicago`) -- Jordan asked for due-today only, don't add overdue items on top of that.
-   - Run [[Skills/triage-personal-items/SKILL|triage-personal-items]] end to end (its own Verify included) to get the Personal Triage section: mail, Teams, and Planner-due-later items, bucketed into needs-action-today / FYI. This is independent of the Planner digest above -- the digest is due-today assigned Planner tasks for the action list; triage-personal-items covers mail and Teams plus a lighter Planner due-later-this-week view. If it reports any source `unreachable`, carry that into the day file's Personal Triage section verbatim rather than omitting the source.
-   - Run [[Skills/confluence-daily-status/SKILL|confluence-daily-status]] end to end (its own Verify included). It drafts bullets from the Planner digest already pulled above, the AMR board already pulled above, and yesterday's Carry-over section -- reuse that data rather than re-fetching. Present its draft inline and wait for Jordan's approve/edit/skip before continuing -- this is a hard stop in the morning phase, not a fire-and-forget step. Fold its result (posted, or the specific not-posted reason) into the day file as the `## Daily Status Post` section.
-   - Scan `log.md` and `Knowledge/Lessons/*.md` "Open threads" for carry-overs from previous days, plus yesterday's day file "Carry-over" section if present.
-   - Read `Projects/daily/inbox.md`'s `## Unconsumed` section. Every line there becomes a `(jordan-request)`-tagged action in today's list. Once folded in, remove those lines from `inbox.md` (leave `## Unconsumed` empty until Jordan adds more) -- an item lives in exactly one place at a time, either the inbox or a day file, never both.
-   - Build today's action list: every blocker from the board becomes an action attributed to its owning team -- chase items for teams Jordan pushes (MFE, MFA Hardware), direct actions for Jordan's own side (MFA Controls / PC). Carry-overs come next, then drained inbox items. Rank by days-blocked descending; safety-gate (250/270) blockers first within a tie; inbox items have no days-blocked figure, so list them after the ranked blockers. Planner tasks never enter this list -- they get their own section, see the output template.
-   - Draft the day file using the output template, including the Planner digest section. One recommendation for the day, with the reason. Run `humanizer` on the signature line and the recommendation only -- action-item bullets and Planner task lines stay verbatim. Write the final version.
-3. **Midday pulse.** Re-pull the AMR Hub board and diff against the morning snapshot in the day file: gates that changed status, new blockers, blockers cleared. Also check `Projects/daily/inbox.md` for anything added since the morning drain; fold new items in under the same `(jordan-request)` tag and clear them the same way. Append a "Midday delta" section to the day file. If nothing changed on either front, say so in one line -- no fabricated movement.
-4. **Close-out.** Mark each action item done / moved / still open. Anything still open becomes tomorrow's "Carry-over" section. Append per-gate movement for the day (units that advanced a gate). Planner tasks are excluded from this reconciliation entirely -- they don't count toward the done/moved/still-open conservation check and they don't carry over via the day file's Carry-over mechanism. Reasoning: for AMR blockers the day file *is* the tracking system, so conservation matters -- an action that silently disappears is a real problem. For Planner tasks, Planner itself is the system of record; Kilroy re-reads it fresh every morning, so carrying a "still open" Planner task forward here would just create a second, divergent copy of state Planner already owns. Say so explicitly in the Close-out section: "Planner tasks are not reconciled here -- see Planner directly for current status." Then run [[Skills/session-recap/SKILL|session-recap]] if anything reusable was learned. Append the log.md entry (per step 5: the prose line plus its `kilroy-log` companion).
-5. **Log format:** the prose line `## [<date>] daily | <phase> -- <n> actions, <n> blockers (<team>=<n>, ...), <n> carried over`, followed on the next line by its structured companion (format contract in `log.md`'s header): `<!-- kilroy-log date=<date> skill=run-daily-workflow event=daily status=<ok|warn> phase=<morning|midday|close-out> actions=<n> blockers=<n> blockers_mfe=<n> blockers_mfa_controls=<n> blockers_mfa_hardware=<n> carried=<n> -->`. `status=warn` when the day file carries a WARN banner line or a `Data quality flags (Planner)` line, else `status=ok`.
-
-## Proactive invocation
-
-Kilroy is local-first, so "proactive" means a scheduled morning run: Windows Task Scheduler or cron invoking `claude -p "kilroy run my day"` in the repo, or a Claude Code Routine where available. The schedule triggers the same skill; nothing else changes. Midday and close-out can be scheduled the same way, but start with morning-only until the brief proves useful -- same reasoning as the skill-sprawl anti-pattern.
-
-**In progress, 2026-07-17**, for the hosted Claude Code environment: a Routine (weekdays at 07:06, target time zone unconfirmed) is intended to fire into a fresh session that reads `CLAUDE.md`, runs `check-connectors` then this skill's morning phase, and sends a push notification with either the top action item or the connector-check failure. It writes the day file to disk but does not auto-commit or push it -- that stays a manual/interactive step so a bad automated run never lands on the shared branch unreviewed. See `Knowledge/Lessons/2026-07-17-proactive-trigger.md` for the full setup, the caveat that this environment currently can't reach any of the three real connectors (so every fire will hit the `check-connectors` FAIL path until `.env` points at reachable endpoints), and how to change the schedule or turn on auto-push later.
+0. **Ad-hoc capture (any time).** "add \<item\> to my list": append `- [ ] <item text> -- added <YYYY-MM-DD HH:MM> (jordan-request)` under `## Unconsumed` in `Projects/daily/inbox.md`. Confirm in one line. Day file untouched until the next morning drain.
+1. **Resolve mode, phase, and weekday.**
+   - `--autonomous` present: phase comes from `--phase=` (missing/invalid phase = write a `failed` marker naming the bad argument, exit). Record `startedAt` now. If today is Fri/Sat/Sun (`America/Chicago`): write the `skipped` marker, exit cleanly.
+   - Interactive: infer phase from the trigger words; if the day file `Projects/daily/<today>-daily.md` doesn't exist, phase is morning regardless of clock.
+2. **Morning phase.**
+   - Run [[Skills/check-connectors/SKILL|check-connectors]] silently. FAIL = day file opens with the failure report; data-pulling bullets below are skipped for the failed sources; marker records each.
+   - Gather, one source at a time, each fail-loud into the marker's `sources` map:
+     - **Mail** -- messages where Jordan is directly addressed or flagged, since last workday.
+     - **Teams** -- DMs and @mentions, plus the group chats listed in `Knowledge/Personal/monitored-chats.md` (summarize each configured chat's activity; skip with a marker note if the config is absent).
+     - **Planner** -- Jordan's assigned tasks: due today, and assigned-with-no-due-date.
+     - **Loop** -- Jordan's Loop task assignments via the resolved Loop path (ticket 04). If neither Loop path responds, `loop: failed` in the marker -- never silently omit.
+   - Run [[Skills/triage-personal-items/SKILL|triage-personal-items]] end to end for the Personal Triage section (it reuses the pulls above where its Steps allow).
+   - **Draft** the Confluence status post per [[Skills/confluence-daily-status/SKILL|confluence-daily-status]]'s drafting steps -- text only, into the day file's `## Daily Status Post` section marked `DRAFT -- awaiting approval`. Autonomous mode stops there; interactive mode presents it and, on approval, hands the post to that skill's Playwright flow.
+   - Scan `log.md` + `Knowledge/Lessons/*.md` open threads + yesterday's day file Carry-over section for carry-overs. Drain `inbox.md` `## Unconsumed` lines into today's actions (`(jordan-request)` tag), removing them from the inbox -- an item lives in exactly one place.
+   - **Generate the day checklist** -- the ordered plan for Jordan's day, biggest work first, from everything gathered above. Ordering follows the `## Tier rules` section (ticket 03 lands it; until then: assigned tasks from Teams/Loop first, AMR repair/commissioning work second, everything else after, due date then age as tiebreak).
+   - Write the day file (template below). Humanizer on signature + recommendation only. Marker (`finishedAt`, statuses) + journal line last.
+3. **Delta phase (11:00, 13:00, or "kilroy midday").** Re-pull mail/Teams/Planner/Loop deltas since the morning snapshot; append a `## Delta <HH:MM>` section: new items, cleared items, checklist adjustments -- or one line saying nothing changed. Fold any new `inbox.md` lines in, same drain rule. Marker + journal line.
+4. **Closeout phase (16:00 or "kilroy wrap the day").** Reconcile the checklist and action list: done / moved / still open (autonomous runs mark best-guess from source state, flagged `proposed --` for Jordan to confirm at next login; interactive runs confirm live). Still-open items become tomorrow's Carry-over section. Planner/Loop tasks are never reconciled here -- their systems of record own them; say so in the section. Thursday closeout additionally runs the weekly reflection (ticket 08). Marker + journal line; log.md entry per step 5. Interactive close-out also runs [[Skills/session-recap/SKILL|session-recap]] if anything reusable was learned.
+5. **Log format** (morning and closeout, both modes): prose line `## [<date>] daily | <phase> -- <n> actions, <n> carried over`, then `<!-- kilroy-log date=<date> skill=run-daily-workflow event=daily status=<ok|warn> phase=<phase> actions=<n> carried=<n> -->`. `status=warn` when the day file carries any source-failure callout or data-quality flag.
 
 ## Verify
 
-Before handing the day file back to Jordan:
-
-1. **Sum audit** (inherited from the progress board): every unit on the board appears in exactly one gate bucket, and the day file's blocker count equals the board's blocker count.
-2. **Action traceability**: every action item traces to a real blocker line, a real carry-over line in a prior day file or lesson, or a real line in `inbox.md`'s `## Unconsumed` section at drain time. No invented work.
-3. **Fail loud**: if `check-connectors` reports a FAIL, or AMR Hub or the Master Tracker CSV is unreachable mid-run, the day file says so at the top and the affected sections are marked unavailable -- never silently reuse yesterday's numbers as today's. A WARN (e.g. stale CSV) is not a FAIL -- it surfaces as a banner line, not a blocker to producing the brief.
-4. **Close-out conservation**: actions done + moved + still-open = actions opened that morning (plus any added midday). No action silently disappears.
-5. **Inbox conservation**: every line drained from `inbox.md`'s `## Unconsumed` section appears in exactly one day file's action list, and is removed from `inbox.md` in the same step. No inbox item is folded in twice, and none is silently dropped without appearing in a day file.
-6. **Humanizer stayed in its lane**: action-item bullets in the final version are byte-for-byte identical to the pre-humanizer draft. Only the signature line and the recommendation changed.
-7. **Planner task traceability**: every task listed in "Today's tasks (Planner)" matches a real row from the Graph API pull (or the fixture, in a dry-run), filtered to the resolved object ID and due today. No invented tasks.
-8. **Planner data quality flags**: a task with a null or missing `dueDateTime` is named explicitly under a "Data quality flags (Planner)" line -- never silently dropped, never guessed into the due-today list. Same pattern as [[Skills/arriving-amr-progress/SKILL|arriving-amr-progress]]'s "Data quality flags" section.
-9. **Planner humanizer scope**: Planner task lines in the final version are byte-for-byte identical to the pre-humanizer draft. Same pattern as Verify item 6 above -- task titles, due dates, and plan names never get touched by humanizer.
-10. **Personal Triage inherited verify**: the Personal Triage section passes [[Skills/triage-personal-items/SKILL|triage-personal-items]]'s own Verify checklist (count check, no double-count between buckets, source completeness, no cross-source dedup, bucket traceability) before being merged in. Item text (subjects, task titles, sender/chat names) in the final version is byte-for-byte identical to the pre-humanizer draft, same rule as Verify items 6 and 9.
-11. **Structured line audit**: the `kilroy-log` companion line sits on the line immediately after the prose log line and follows `log.md`'s header contract; `actions`/`carried` match the day file's state for the phase being logged (e.g. the morning action list and Carry-over section for `phase=morning`; the close-out reconciliation for `phase=close-out`), `blockers` and the per-team `blockers_*` counts match the board's, and `status` follows the WARN rule in step 5.
-12. **Daily Status Post inherited verify**: the `## Daily Status Post` section passes [[Skills/confluence-daily-status/SKILL|confluence-daily-status]]'s own Verify checklist (date-match guard, no double-post, scope containment, notify-checkbox confirmation, approval-gate integrity, fail-loud traceability) before being folded in. The morning phase did not proceed past this step without an explicit Jordan response (approve/edit/skip) -- a silently-skipped approval prompt is a Verify failure here, not just in the sub-skill.
+1. **Marker exists and is coherent** (autonomous runs): `Projects/daily/runs/<date>-<phase>.json` written, valid JSON, `finishedAt` >= `startedAt`, and overall `status` consistent with the `sources` map (all ok = ok; mix = partial; none ok = failed; weekend = skipped with empty sources).
+2. **Journal line appended**: one new line in `journal.jsonl`, valid JSON, date/phase matching the marker. Append-only -- no prior line modified.
+3. **No posting tools in the autonomous path**: grep this skill's autonomous steps -- no `playwright` invocation, no Confluence write call. The status post exists only as day-file draft text until interactive approval.
+4. **Fail loud held**: every source with `failed` in the marker has a matching explicit callout in the day file section it feeds -- never an empty-but-normal-looking section.
+5. **Action + inbox conservation**: every action traces to a carry-over, a real inbox line at drain time, or a gathered assignment; drained inbox lines removed in the same step; closeout's done + moved + still-open equals what was opened.
+6. **Checklist traceability**: every checklist item traces to a gathered item (Teams/Loop/Planner assignment, AMR work, carry-over, inbox line). No invented work; ordering matches the tier rules.
+7. **Humanizer stayed in its lane**: task titles, item text, and checklist lines byte-identical pre/post humanizer.
+8. **Inherited verifies**: triage-personal-items' checklist for its section; confluence-daily-status' drafting checks for the draft (its posting checks apply only after interactive approval).
+9. **Structured line audit**: the `kilroy-log` companion follows `log.md`'s header contract and matches the day file's counts.
 
 ## Output template
 
 ```markdown
 # Daily -- <YYYY-MM-DD>
 
-> Kilroy was in the AMR Hub at HH:MM CDT. <total> units, <blockers> blocked, <n> actions today.
+> Kilroy was here at HH:MM CDT. <n> checklist items, <n> Planner tasks due, <n> mentions to answer.
 
-<Warning: Master Tracker CSV is <N>h old... -- only present if check-connectors returned a WARN, omit entirely otherwise>
+<per-source failure callouts, if any -- one line each, verbatim from the marker details>
 
-## Today's actions
+## Day checklist
 
-### Push (their action)
+1. [ ] <item> -- <source: Teams/Loop/Planner/AMR/carry-over> <due/age note>
+2. [ ] ...
 
-**MFE (<n>)**
-- [ ] T3L2_<nnn> at gate 270, blocked 6 days -- "<blocker text>"
+## Mentions & messages
 
-**MFA Hardware (<n>)**
-- [ ] T3L2_<nnn> at gate 220, blocked 4 days -- "<blocker text>"
-
-### Do (our action -- MFA Controls / PC)
-
-- [ ] T3L2_<nnn> at gate 250, blocked 2 days -- "<blocker text>"
-- [ ] <carry-over item> -- (carry-over from <YYYY-MM-DD>)
-- [ ] <item text from inbox.md> -- (jordan-request, added <YYYY-MM-DD HH:MM>)
+- [Mail] <subject> -- from <sender>, <why it needs Jordan>
+- [Teams] <chat> -- @mention by <sender>: <one-line gist>
+- [Teams:<configured chat>] <summary of activity>
 
 ## Today's tasks (Planner)
 
-**<Plan name A> (<n>)**
+**<Plan name> (<n>)**
 - [ ] <task title> -- due today
 
-**<Plan name B> (<n>)**
-- [ ] <task title> -- due today
+Data quality flags (Planner): <task title> -- due date null/missing, excluded above. (Omit line if none.)
 
-Data quality flags (Planner): <task title> -- `dueDateTime` returned null/missing, excluded from the list above. Needs <resolution step>. (Omit this line entirely if there are no flags.)
+## Loop assignments
+
+- [ ] <task> -- <status/source path note>
 
 ## Personal Triage
 
-**Needs action today**
-- [Planner] <task title> -- due <today|N days overdue>
-- [Mail] <subject> -- from <sender>, flagged
-- [Teams] <chat/channel name> -- @mentioned by <sender>
-(or "None flagged" if empty)
-
-**FYI**
-- Mail: <n> unread (top 3: <subject>, <subject>, <subject>)
-- Teams: <n> unread (top 3: <chat name>, <chat name>, <chat name>)
-- Planner: <n> due later this week
-
-**Source status:** mail <ok|unreachable> | teams <ok|unreachable> | planner <ok|unreachable>
+<triage-personal-items' section, verbatim per its own template>
 
 ## Daily Status Post
 
-**Posted** to Week <MM/DD/YYYY>, <Weekday> <date> -- notify-watchers confirmed unchecked.
-<!-- or -->
-**NOT POSTED** -- <specific reason: page-not-found | date-mismatch | already-posted | checkbox-unconfirmed | profile-locked | playwright-failure: <detail> | skipped (empty draft or by Jordan)>
-
-## Board snapshot
-
-| Fleet | at-220 | at-250 | at-270 | at-280 | production-ready |
-|---|---|---|---|---|---|
-| <fleet-name> | <n> | <n> | <n> | <n> | <n> |
-
-Full board: [[Projects/progress/<YYYY-MM-DD>-progress]]
+DRAFT -- awaiting approval:
+- <bullet>
+- <bullet>
+<!-- after interactive approval this becomes: **Posted** ... or **NOT POSTED** -- <specific reason> -->
 
 ## Carry-over (from yesterday)
 
-- <item> -- <source: prior day file / lesson open thread>
+- <item> -- <source>
 
-## Midday delta
+## Delta <HH:MM>
 
-(appended at midday: gates changed, new blockers, blockers cleared -- or one line saying nothing changed)
+(appended by delta phases: new / cleared / adjusted -- or "nothing changed")
 
 ## Close-out
 
-(appended at end of day)
-- Done: <n> -- <items>
-- Moved: <n> -- <items, where they went>
+- Done: <n> -- <items>            <- autonomous: each line prefixed "proposed --"
+- Moved: <n> -- <items, where>
 - Still open (tomorrow's carry-over): <n> -- <items>
-- Gate movement: <unit> advanced <gate> -> <gate>, ...
 
-Planner tasks are not reconciled here -- see Planner directly for current status.
+Planner and Loop tasks are not reconciled here -- their systems of record own them.
 
 ## Recommendation
 
-<one recommendation with the reason -- e.g. "Push MFE on T3L2_027 first: 6 days blocked at 270 and two units are queued behind it at 250.">
+<one recommendation with the reason.>
 ```
 
 ## Examples
 
-**Good trigger:** *"kilroy run my day"* -> morning phase, full brief.
-**Good trigger:** *"anything change since this morning?"* -> midday phase, delta appended to the day file.
-**Good trigger:** *"add 'call vendor' to my list"* -> appended to `Projects/daily/inbox.md` immediately, tagged `(jordan-request)`; folded into the next morning brief's action list, then cleared from the inbox.
-**Good trigger:** morning brief reaches the Confluence-status step -> draft shown inline, Jordan approves, [[Skills/confluence-daily-status/SKILL|confluence-daily-status]] posts, result folded into `## Daily Status Post`.
+**Good trigger (scheduled):** Task Scheduler, Tuesday 07:00 -> `claude -p "/run-daily-workflow --autonomous --phase=morning"` -> day file + checklist + status-post draft + marker + journal line; nothing posted anywhere.
+**Good trigger (scheduled, weekend):** same command on Saturday -> `skipped` marker, clean exit, nothing else.
+**Good trigger (interactive):** "kilroy run my day" at 10:15 after the 07:00 run already fired -> surfaces the existing brief, runs the Confluence approval gate on the pending draft.
+**Good trigger:** "add 'call vendor' to my list" -> inbox append, folded in next morning.
 
-**Bad trigger:** *"kilroy handoff cybercab 2m"* -> that is [[Skills/fleet-commissioning-handoff/SKILL|fleet-commissioning-handoff]], not the day runner.
-**Bad trigger:** treating a stale-CSV WARN from `check-connectors` as a reason to skip the brief -- it's a banner line, not a stop condition. Only a hard FAIL stops the brief.
+**Bad trigger:** *"kilroy handoff gftx-cybercab-2m-b3-agv"* -> [[Skills/fleet-commissioning-handoff/SKILL|fleet-commissioning-handoff]].
 
 ## Anti-patterns
 
-- Re-rendering the full progress board inside the day file. Link the `Projects/progress/` snapshot; the day file is actions, not raw status.
-- Inventing action items to make the day look fuller. Every action traces to a blocker, a carry-over, or a real `inbox.md` line.
-- Letting a missing data source silently zero the blocker count. Fail loud -- mark the section unavailable.
-- Running close-out without reconciling every open action. Done + moved + still-open must equal what was opened.
-- Leaving a folded-in item sitting in `inbox.md`'s `## Unconsumed` section. It gets re-drained (and duplicated) the next morning if it isn't cleared.
-- Treating a WARN from `check-connectors` as a FAIL, or silently dropping a WARN instead of surfacing it in the day file's banner.
-- Writing to AMR Hub. Read-only -- Jordan updates gates in the dashboard.
-- Running the humanizer pass over action-item bullets. It touches the signature and recommendation only.
-- Silently dropping a Planner pull failure. If the Planner check-connectors probe or the full morning-phase pull fails, say so in the day file's Planner section -- don't zero it out quietly.
-- Silently dropping a Personal Triage source failure. If [[Skills/triage-personal-items/SKILL|triage-personal-items]] reports mail, Teams, or Planner as `unreachable`, carry that into the day file's Personal Triage section -- don't omit the source or zero its count.
-- Letting the morning phase continue past [[Skills/confluence-daily-status/SKILL|confluence-daily-status]]'s draft without an explicit Jordan response. No auto-approve, no timeout-based skip -- the brief waits.
-- Re-implementing confluence-daily-status's page-resolution or notify-checkbox logic inline here instead of delegating to that skill. This skill orchestrates; it doesn't duplicate the sub-skill's Confluence-specific mechanics.
-- Inventing overdue-item handling for Planner. Jordan asked for due-today only, not overdue-inclusive -- don't add scope he didn't ask for.
-- Reconciling Planner tasks at close-out. Planner is the system of record and Kilroy re-reads it fresh every morning -- don't fold Planner tasks into the done/moved/still-open count and don't carry them forward.
-- Running the humanizer pass over Planner task lines. Same rule as action-item bullets -- task titles, due dates, and plan names stay verbatim.
+- Posting to Confluence (or launching playwright at all) in an autonomous run. Draft only; the human gate is the point.
+- Asking questions in an autonomous run. Take the fail-loud default and record it.
+- Running data pulls on a Friday/weekend instead of writing the `skipped` marker.
+- Silently zeroing a section whose source died. Marker + explicit callout, every time.
+- Inventing checklist or action items. Everything traces to a gathered item.
+- Rewriting journal.jsonl history. Append-only.
+- Letting an interactive session skip the Confluence approval prompt on a pending draft. Approve, edit, or skip -- explicitly.
+- Re-implementing confluence-daily-status' page/checkbox mechanics here. This skill orchestrates.
+- Reviving the retired AMR board or Graph-API Planner pull. Consolidation decision record explains why they went.
