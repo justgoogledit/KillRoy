@@ -1,0 +1,19 @@
+{
+  "mcpServers": {
+    "kilroy-connectors": {
+      "command": "node",
+      "args": ["mcp-server/server.js"]
+    },
+    "playwright": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@playwright/mcp@latest",
+        "--user-data-dir",
+        "${PLAYWRIGHT_USER_DATA_DIR}",
+        "--channel",
+        "${PLAYWRIGHT_BROWSER_CHANNEL}"
+      ]
+    }
+  }
+}

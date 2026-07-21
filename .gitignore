@@ -1,0 +1,7 @@
+/.env
+
+# Local Claude Code settings and hookify rules -- machine-specific, not portable.
+/.claude/
+
+# MCP runtime/telemetry data -- local cache, not portable.
+/.mcp-data/
