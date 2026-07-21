@@ -5,3 +5,6 @@
 
 # MCP runtime/telemetry data -- local cache, not portable.
 /.mcp-data/
+
+# Node dependencies -- reinstall via `cd mcp-server && npm install`.
+/mcp-server/node_modules/

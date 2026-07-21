@@ -1,0 +1,52 @@
+---
+date: 2026-07-20
+session_topic: Finish confluence-daily-status machine setup; plan a major connector consolidation (AMR Hub + Master Tracker retired, Planner folded into Nova)
+project: [[Projects/daily/daily]]
+tags: [lesson, connectors, mcp-server, planning, personal-assistant]
+---
+
+# Confluence setup wrap-up, then a big unplanned architecture decision
+
+## Resume here (fresh context window)
+
+**Two separate threads this session, at very different completion states:**
+
+1. **confluence-daily-status machine setup — mostly done.** See "What we did" below for specifics. Remaining open items are in [[Knowledge/Lessons/2026-07-20-confluence-daily-status-design]]'s "Open threads" checklist, now updated in place — read that file's current state, not this one, for what's left there (creating the dedicated Edge profile + signing into Confluence once, restarting Claude Code, re-running `kilroy check`, dry-running date resolution, then a live end-to-end post).
+
+2. **Connector consolidation — planned and approved, execution not started.** Jordan asked to drop AMR Hub and Master Tracker CSV entirely, keep Overmind on its existing typed tool, and fold Planner onto Nova's `planner` MCP as the sole path. This is a much bigger change than it sounds — it guts `arriving-amr-progress` (retire outright, its only data source is gone) and `fleet-commissioning-handoff` (reduce to Overmind-only, losing its AMR-Hub/Master-Tracker cross-reference logic and buyoff-gate reporting — arguably Kilroy's core described purpose). **Full plan is written and approved at `C:\Users\jocasias\.claude\plans\cozy-purring-crown.md`** — read that file in full before resuming, it has the complete sequencing, every file to touch, and the confirmed decisions on all open questions. Jordan said "execute later" — one edit (`mcp-server/server.js`'s header/imports) was attempted and rejected mid-turn, so **nothing in the plan has actually been applied yet**. Start from step 1 of the plan file's "Sequencing" section.
+
+## What we did
+
+- Verified `@playwright/mcp`'s CLI flags against the real README (WebSearch was VPC-blocked again, same as last session — user did the verification directly and reported back): package name `@playwright/mcp` is correct, `--user-data-dir` is correct, headed-by-default (no flag needed) matches the "never headless" requirement. `--channel` is **not** a real flag — channel is set via `--browser <chrome|firefox|webkit|msedge>` instead. `.mcp.json` already had this fixed to `--browser` by the time I re-read it.
+- Installed Node.js: found it was already present via `winget` (`OpenJS.NodeJS.LTS` v24.18.0, `C:\Program Files\nodejs`) and already in the machine PATH — the open shell session just predated the install. `winget install` attempt correctly reported "already installed, no upgrade." No fresh install was actually needed.
+- Ran `cd mcp-server && npm install` — 93 packages, 0 vulnerabilities.
+- Created `.env` from `.env.example`. Discovered `.env.example`'s `MASTER_TRACKER_CSV_PATH` default doesn't match the real file on this machine (real file is `...\GFTX PC Equipment - Sonic AMR Documentation\Documentation\Sonic AMR Master Tracker.xlsx` — a `.xlsx`, not a `.csv`, at a different path entirely). **This is now moot** — Master Tracker CSV is being retired per the plan below — but flagging it in case the retirement doesn't happen: the example path was simply wrong, not a placeholder.
+- Created a dedicated directory for the Playwright browser profile (`C:\Users\jocasias\AppData\Local\KilroyPlaywrightProfile`), empty and unsigned-in — still needs the one-time Confluence SSO sign-in per the confluence-daily-status lesson's open threads.
+- Jordan asked "do you need the registration creds if the mcp are being brought in from nova?" — this single question led to a full re-examination of Kilroy's connector architecture (see Decisions below).
+
+## Decisions
+
+- **Retire AMR Hub and Master Tracker CSV entirely, no replacement.** Confirmed explicitly with Jordan after I flagged that this isn't a like-for-like migration (unlike Planner, Nova has no MCP that touches AMR tracker or CSV data at all) — it's a pure scope reduction. Consequence, also confirmed: **retire `arriving-amr-progress` fully** (its only data source is AMR Hub) and **gut `fleet-commissioning-handoff` to an Overmind-only fleet-state report** (its AMR-Hub/Master-Tracker cross-reference logic and buyoff-gate reporting go away).
+- **Overmind stays on `kilroy-connectors`' typed tool, not Nova's `overmind` MCP.** Nova's `overmind`/`AskOvermind` is a natural-language on-call investigator, not a structured field-puller — not a fit for a report needing exact fields (`imageTag`, `robotCount`, `tracerEventsActive`, `mfsWiring`, `robotConfigsYamlDelta`) every run. Confirmed with Jordan via an explicit either/or question rather than assumed.
+- **Planner consolidates onto Nova's `planner` MCP as the sole path.** `kilroy-connectors`' `planner_get_tasks` tool (app-registration/Graph-API-based) is retired entirely, along with its `GRAPH_API_*`/`PLANNER_PLAN_IDS` env vars. This isn't really a novel restructuring — `triage-personal-items` already calls Nova's `planner` MCP directly today; this just makes that the *only* path instead of a second parallel one.
+- **`run-daily-workflow` scopes down, doesn't retire.** Confirmed via AskUserQuestion. Its entire "Today's actions" section (team-attributed blockers, board snapshot, gate-movement close-out) was built on `arriving-amr-progress`'s board and has nothing left once that's gone — it becomes a smaller day runner (Planner digest + personal triage + Confluence status draft/approval + carry-overs).
+- **`arriving-amr-progress` is deleted outright, not stubbed.** Confirmed via AskUserQuestion. Git history preserves it; a stub buys nothing since every link site (`CLAUDE.md`, `Skills/Skills.md`) needs editing either way.
+- **CLAUDE.md's opening identity paragraph gets rewritten**, not left as-is. Confirmed via AskUserQuestion — I recommended leaving it (the AMR-domain identity persists via the reduced `fleet-commissioning-handoff`), but Jordan chose to rewrite it since the specific gate-climbing-ladder mechanism it describes ("Kilroy tracks each incoming AMR as it climbs the buyoff ladder from MFE...") no longer exists. Draft replacement text is in the plan file, presented for review at execution time (CLAUDE.md edits need an explicit diff per its own non-negotiable, not silent rewriting).
+- **`.claude/hooks/session-start.sh` gets updated in this same change**, not deferred. Confirmed via AskUserQuestion — its probe (currently three sources: Overmind, AMR Hub, Master Tracker) should match `check-connectors`' new two-source scope (Overmind, Planner) now, not as a separate follow-up.
+- **Lower-stakes implementation defaults, not separately confirmed** (documented in the plan for review at execution time rather than asked as their own questions — judged not to warrant interrupting Jordan a third round): `fleet-commissioning-handoff`'s log/Verify fields move to simple Overmind-derived fields; its surviving fixture coverage collapses to one happy-path pairing (no new broken-Overmind fixture authored now); the Planner fixture is deleted along with its pairing (fixture-based dry-running doesn't map onto a live Nova MCP call the way it did an HTTP/Graph endpoint); `confluence-daily-status`'s AMR-context bullet is dropped outright, no replacement; the gate-ownership-map file (`Knowledge/Sources/2026-07-02-pc-amr-gates.md`) gets a header note, not a deletion, per CLAUDE.md's own gate-attribution non-negotiable.
+
+## Mistakes & corrections
+
+None this session on the execution side (only one edit was attempted, and it was correctly stopped by the user before landing — not a mistake, a deliberate "not yet" from Jordan). Process note worth keeping: three parallel Explore agents plus one Plan agent produced a very thorough, very long design — appropriate for a change this size (it silently would have broken two skills' core purpose if under-scoped), but worth remembering that a "simple sounding" request ("drop these two sources") can hide this much surface area. The right response was to slow down and ask, not to execute the literal request immediately — reinforced by how much the initial plain-language framing from Jordan ("just fold Planner into Nova") undersold the actual blast radius on AMR Hub/Master Tracker specifically.
+
+## New context for Personal/
+
+- Jordan's reasoning style, confirmed twice this session: when the AI surfaces a real tradeoff clearly (not buried in jargon) and gives a recommendation, he engages with the substance and makes a call quickly rather than deferring — see the four AskUserQuestion rounds in this session, all answered decisively, three of four taking the recommended option and one (identity paragraph) deliberately not.
+- Jordan is comfortable driving significant architecture simplification once the tradeoffs are visible — this session went from "why do you still need Graph API creds" to a five-file, two-skill-retiring plan in one sitting, without hesitation once each individual question was framed clearly.
+
+## Open threads
+
+- [ ] **Execute the connector-consolidation plan** at `C:\Users\jocasias\.claude\plans\cozy-purring-crown.md` — nothing has been applied yet (the one edit attempted, `mcp-server/server.js`, was rejected by the user mid-turn with "execute later"). Follow the plan's own "Sequencing" section from step 1.
+- [ ] Finish the remaining confluence-daily-status machine-setup items — see [[Knowledge/Lessons/2026-07-20-confluence-daily-status-design]]'s "Open threads" for the current, up-to-date checklist (this session checked off the `@playwright/mcp` verification, Node.js install, and `mcp-server` `npm install` items in that file directly).
+- [ ] After executing the connector-consolidation plan, its own step 15 calls for a *new* lesson file (`Knowledge/Lessons/2026-07-20-connector-consolidation.md`, deliberately a different filename from this one) documenting the completed change — don't confuse this planning-session lesson with that execution lesson when they both exist.
+- [ ] The plan's §16 flags (as a recommendation, not a decision made here) that Jordan should consider re-running `/floor-init` once the change lands, since Kilroy's "safety-adjacent" tier was justified specifically by AMR-Hub-sourced buyoff-gate reporting that's being removed.
