@@ -46,9 +46,10 @@ threshold below -- see `CLAUDE.md` Scope's `triage-personal-items` entry for tha
 
 ## v1 scope (original, Planner-only -- see update above)
 
-Due-today Planner tasks assigned to Jordan, pulled across every plan in `PLANNER_PLAN_IDS`,
-grouped by plan name, via run-daily-workflow's own Planner digest step. This pull's scope is
-unchanged by the update above -- it's still due-today-only, still Jordan's own assignments only.
+Due-today Planner tasks assigned to Jordan, grouped by plan name, via run-daily-workflow's own
+Planner digest step (since 2026-07-21 that pull goes through Nova's `planner` MCP, not the
+retired Graph-API tool and its plan-id env var). This pull's scope is unchanged by the update
+above -- it's still due-today-only, still Jordan's own assignments only.
 
 ## Deferred (not forgotten)
 

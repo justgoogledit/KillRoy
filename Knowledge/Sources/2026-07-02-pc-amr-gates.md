@@ -8,6 +8,8 @@ tags: [amr, buyoff, gate, ownership, gftx, pc-amr, mfa, mfe]
 
 # GFTX AMR Buyoff Gate Ownership Map
 
+> **Status note (2026-07-21):** the skills that consumed this map for automated blocker attribution (`arriving-amr-progress`, the gate table in `fleet-commissioning-handoff`) were retired in the connector consolidation -- see `Knowledge/Lessons/2026-07-20-connector-consolidation-planning.md`. Kept as reference, not deleted, per CLAUDE.md's gate-attribution non-negotiable: it remains the authoritative ownership record if gate questions come up in conversation or a future skill needs it.
+
 Authoritative reference for which team owns each buyoff gate in the GFTX AMR commissioning pipeline. Kilroy uses this to attribute every blocker to the team whose action unblocks it.
 
 Source of truth: Sonic AMR Program Confluence (PC-AMR milestone RACI) + `amrtracker/backend/src/routes/amrs.ts:16` schema.

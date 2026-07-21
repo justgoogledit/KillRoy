@@ -9,15 +9,11 @@ import { loadEnv } from '../lib/env.js';
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 
-test('parses the real .env.example, preserving the unquoted-space CSV path', () => {
+test('parses the real .env.example', () => {
   const env = loadEnv(join(repoRoot, '.env.example'));
   assert.ok(env, '.env.example must exist and parse');
-  assert.equal(env.AMR_HUB_BASE_URL, 'http://localhost:5000');
-  // The value this parser exists for: an unquoted space that breaks naive `source`.
-  assert.equal(
-    env.MASTER_TRACKER_CSV_PATH,
-    'C:/Users/jocasias/OneDrive - Tesla/AMR TRACKER/master-tracker.csv',
-  );
+  assert.equal(env.OVERMIND_BASE_URL_TEMPLATE, 'https://{fleet}.robots.tesla.com/');
+  assert.equal(env.PLAYWRIGHT_BROWSER_CHANNEL, 'msedge');
   // Comment lines and blank lines never become keys.
   assert.ok(!Object.keys(env).some((k) => k.startsWith('#')));
 });
