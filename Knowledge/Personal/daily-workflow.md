@@ -34,26 +34,35 @@ Jordan didn't name a specific M365 problem he's fighting. Nothing here is a fire
 
 ## Highest-value digest item
 
-Planner / To-Do due-today items. The single thing worth pulling into the morning brief. That's
-the whole v1 scope on the M365 side -- see [[Skills/run-daily-workflow/SKILL|run-daily-workflow]]'s
-morning phase for how it's implemented.
+Planner / To-Do due-today items. The original v1 anchor for the morning brief -- see
+[[Skills/run-daily-workflow/SKILL|run-daily-workflow]]'s morning phase for how it's implemented.
 
-## v1 scope
+**Updated 2026-07-20:** v1's "M365 side is Planner-only" framing is superseded. Jordan directed
+Kilroy to broaden into a general personal assistant (see `CLAUDE.md`'s "Who you are" and Scope
+sections); the first step was [[Skills/triage-personal-items/SKILL|triage-personal-items]], which
+pulls Teams mentions and flagged/important email directly, alongside a separate Planner
+due-later-this-week view. This went through the explicit-exception path, not the "3+ repeats"
+threshold below -- see `CLAUDE.md` Scope's `triage-personal-items` entry for that record.
+
+## v1 scope (original, Planner-only -- see update above)
 
 Due-today Planner tasks assigned to Jordan, pulled across every plan in `PLANNER_PLAN_IDS`,
-grouped by plan name. Nothing else from Teams, Outlook, or SharePoint/OneDrive is pulled into
-Kilroy in v1.
+grouped by plan name, via run-daily-workflow's own Planner digest step. This pull's scope is
+unchanged by the update above -- it's still due-today-only, still Jordan's own assignments only.
 
 ## Deferred (not forgotten)
 
-Three items, explicitly out of scope for now:
+One item remains explicitly out of scope, plus the note below on the two items that moved out of
+this list:
 
-- **Teams mentions.** Not pulled. No acute pain point named to justify building it yet.
-- **Flagged email.** Same -- Outlook triage stays manual for now.
 - **Team-tracked Planner tasks.** Tasks Jordan owns or manages but isn't personally assigned to
   (the assignee field points at someone else, or the task is unassigned but on a plan he runs).
-  The v1 digest filters to tasks assigned to Jordan's own AAD object ID -- this is a deliberately
-  narrower set.
+  Both the run-daily-workflow digest and `triage-personal-items`' Planner pull filter to tasks
+  assigned to Jordan's own AAD object ID -- this remains a deliberately narrower set in both
+  places.
 
-Revisit any of these if Jordan hits the same manual task 3+ times, same threshold as the
-skill-sprawl rule in `CLAUDE.md`.
+**No longer deferred, as of 2026-07-20:** Teams mentions and flagged email used to be listed here
+("no acute pain point named to justify building it yet" / "Outlook triage stays manual for now").
+Both are now pulled by [[Skills/triage-personal-items/SKILL|triage-personal-items]] -- see the
+update note above. Team-tracked Planner tasks remain deferred; revisit if Jordan hits the same
+manual task 3+ times, same threshold as the skill-sprawl rule in `CLAUDE.md`.

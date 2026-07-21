@@ -13,13 +13,16 @@ Skills are the playbook. Each skill lives in its own folder with a `SKILL.md` de
 
 - [[Skills/fleet-commissioning-handoff/SKILL|fleet-commissioning-handoff]] -- package a fleet's commissioning state for line-side ops.
 - [[Skills/arriving-amr-progress/SKILL|arriving-amr-progress]] -- board of incoming AMRs across the 5-gate ladder, blockers grouped by owning team.
-- [[Skills/run-daily-workflow/SKILL|run-daily-workflow]] -- day runner: morning brief (AMR actions plus today's Planner tasks), midday delta, end-of-day close-out and carry-overs. Orchestrates the two skills above. Runs proactively on a schedule.
+- [[Skills/triage-personal-items/SKILL|triage-personal-items]] -- normal-tier triage of mail, Teams, and Planner into a "needs action today" / "FYI" split. Not AMR-scoped; the start of Kilroy's broader personal-assistant surface (2026-07-20).
+- [[Skills/run-daily-workflow/SKILL|run-daily-workflow]] -- day runner: morning brief (AMR actions, today's Planner tasks, personal triage), midday delta, end-of-day close-out and carry-overs. Orchestrates the three skills above. Runs proactively on a schedule.
 
 ## Adding a new skill
 
 Run `skill-creator`. It enforces the format and prevents overlap with existing skills.
 
 Rule: only create a new Jordan-facing workflow skill when Jordan hits the same manual task 3+ times. `check-connectors` and `verify-fixtures` are exempt as foundational infrastructure, same as `skill-creator`/`session-recap`. See `CLAUDE.md` anti-patterns.
+
+**Exception on record (2026-07-20):** `triage-personal-items` was added by explicit request without the 3+ repeats having happened yet, as the first step of intentionally broadening Kilroy from AMR-only to a general personal assistant. See `CLAUDE.md`'s "Who you are" and "Scope" sections.
 
 ## Anti-overlap rule
 
