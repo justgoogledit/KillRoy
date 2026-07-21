@@ -7,6 +7,7 @@ outputs:
   - Projects/daily/<YYYY-MM-DD>-daily.md (the day file, primary artifact -- a living document updated across the day)
   - Projects/daily/runs/<YYYY-MM-DD>-<phase>.json (status marker, one per autonomous phase run -- the login hook and Verify read these)
   - Projects/daily/runs/journal.jsonl (append-only run journal, one line per autonomous phase -- the learning loop reads this)
+  - Knowledge/Lessons/YYYY-MM-DD-weekly-reflection.md (Thursday closeout only -- observations + improvement proposals as drafts, see the Learning loop section)
   - Projects/daily/inbox.md (ad-hoc capture scratch file -- appended to any time, drained into the next morning brief)
   - mirrored copies of daily outputs under `$OBSIDIAN_VAULT_PATH/daily/` when that env var is set and non-empty (see the vault-mirror step; `Projects/daily/` stays authoritative)
   - log.md append (prose event line + structured `kilroy-log` companion line, per log.md's header contract)
@@ -48,7 +49,7 @@ Every autonomous phase writes `Projects/daily/runs/<YYYY-MM-DD>-<phase>.json` (c
 }
 ```
 
-Source keys in play per phase: `mail`, `teams`, `planner`, `loop`, `overmind` (only when a fleet pull actually ran). A `skipped` marker carries an empty `sources` map. `vaultMirror` is the one-line result of the vault-mirror step (step 5) -- a mirror skip is recorded here as a note, never as a failure, and never changes the overall `status`. After the marker, append the run's journal line to `Projects/daily/runs/journal.jsonl` -- schema and the Thursday reflection that consumes it live in the Learning loop section of `.scratch/kilroy-autonomy/issues/08-learning-loop.md` until ticket 08 lands it here.
+Source keys in play per phase: `mail`, `teams`, `planner`, `loop`, `overmind` (only when a fleet pull actually ran). A `skipped` marker carries an empty `sources` map. `vaultMirror` is the one-line result of the vault-mirror step (step 5) -- a mirror skip is recorded here as a note, never as a failure, and never changes the overall `status`. After the marker, append the run's journal line to `Projects/daily/runs/journal.jsonl` -- schema and the Thursday reflection that consumes it live in the `## Learning loop` section below.
 
 ## Applies
 
@@ -81,13 +82,13 @@ Source keys in play per phase: `mail`, `teams`, `planner`, `loop`, `overmind` (o
    - **Generate the day checklist** -- the ordered plan for Jordan's day, biggest work first, from everything gathered above. Ordering follows the `## Tier rules` section below -- tiers first, then the documented tiebreaks within a tier. Every checklist item cites its source inline: the chat/task id or link it came from (a Teams message link, a Planner or Loop task id, an AMR unit id, a carry-over's day-file date, an inbox line). An item with no citable source does not go on the checklist -- that is Verify's no-invented-work check.
    - Write the day file (template below). Humanizer on signature + recommendation only. Marker (`finishedAt`, statuses) + journal line last.
 3. **Delta phase (11:00, 13:00, or "kilroy midday").** Re-pull mail/Teams/Planner/Loop deltas since the morning snapshot; append a `## Delta <HH:MM>` section: new items, cleared items, checklist adjustments -- or one line saying nothing changed. Fold any new `inbox.md` lines in, same drain rule. Marker + journal line.
-4. **Closeout phase (16:00 or "kilroy wrap the day").** Reconcile the checklist and action list: done / moved / still open (autonomous runs mark best-guess from source state, flagged `proposed --` for Jordan to confirm at next login; interactive runs confirm live). Still-open items become tomorrow's Carry-over section. Planner/Loop tasks are never reconciled here -- their systems of record own them; say so in the section. Thursday closeout additionally runs the weekly reflection (ticket 08). Marker + journal line; log.md entry per step 6. Interactive close-out also runs [[Skills/session-recap/SKILL|session-recap]] if anything reusable was learned.
+4. **Closeout phase (16:00 or "kilroy wrap the day").** Reconcile the checklist and action list: done / moved / still open (autonomous runs mark best-guess from source state, flagged `proposed --` for Jordan to confirm at next login; interactive runs confirm live). Still-open items become tomorrow's Carry-over section. Planner/Loop tasks are never reconciled here -- their systems of record own them; say so in the section. Thursday closeout additionally runs the weekly reflection (see `## Learning loop`). Marker + journal line; log.md entry per step 6. Interactive close-out also runs [[Skills/session-recap/SKILL|session-recap]] if anything reusable was learned.
 5. **Vault mirror (every phase, after any daily-output write).** After writing or appending any daily output -- the morning day file, a delta append, the close-out section -- copy the updated file to `$OBSIDIAN_VAULT_PATH/daily/` (create the subfolder if absent). `Projects/daily/` stays authoritative; the vault copy is the one Jordan reads and annotates, and it never feeds back into this skill's state. If `OBSIDIAN_VAULT_PATH` is unset or blank (Mac dev runs won't have it), skip the mirror and record the one-line note in the phase's status marker (`"vaultMirror": "skipped -- OBSIDIAN_VAULT_PATH not set"`) -- a skip is never an error and never degrades the marker's overall `status`. Run this before finalizing the marker so the mirror result lands in it. The path comes from `.env` only -- never hardcoded.
 6. **Log format** (morning and closeout, both modes): prose line `## [<date>] daily | <phase> -- <n> actions, <n> carried over`, then `<!-- kilroy-log date=<date> skill=run-daily-workflow event=daily status=<ok|warn> phase=<phase> actions=<n> carried=<n> -->`. `status=warn` when the day file carries any source-failure callout or data-quality flag.
 
 ## Tier rules
 
-The single home for the day-checklist ordering rules. The checklist generator (morning phase, step 2) reads this section, and the Thursday weekly reflection (ticket 08) points at it when proposing changes -- nothing else restates these rules.
+The single home for the day-checklist ordering rules. The checklist generator (morning phase, step 2) reads this section, and the Thursday weekly reflection (see `## Learning loop`) points at it when proposing changes -- nothing else restates these rules.
 
 Heavy-first tiers:
 
@@ -101,18 +102,53 @@ Ties within a tier: earlier due date first, then older item first (original crea
 
 These rules are static -- the generator never reorders on judgment -- but tunable: the Thursday reflection proposes tier-rule changes based on what Jordan actually reordered, and an approved proposal is edited into this section via the normal skill-creator process, never applied by the reflection itself.
 
+## Learning loop
+
+How the system gets measurably smarter without ever silently editing itself. Two parts: an append-only run journal every autonomous phase writes, and a Thursday reflection that turns a week of journals into improvement drafts.
+
+### Run journal
+
+Every autonomous phase appends exactly one line to `Projects/daily/runs/journal.jsonl` (create the file if absent), after the phase's status marker is written:
+
+```json
+{"date": "YYYY-MM-DD", "phase": "morning|delta|closeout", "sources": {"<source>": {"status": "ok|failed", "detail": "<string>"}}, "itemsSurfaced": <n>, "checklistItems": <n>, "durationSeconds": <n>, "anomalies": ["<string>"]}
+```
+
+- `sources` -- the same map the phase's status marker carries, copied verbatim, not re-derived.
+- `itemsSurfaced` -- gathered items that made it into the day file this phase (checklist candidates, mentions, triage lines).
+- `checklistItems` -- checklist entries after generation (morning) or after adjustment (delta/closeout); 0 when the phase touched no checklist.
+- `durationSeconds` -- `finishedAt` minus `startedAt` from the marker, whole seconds.
+- `anomalies` -- free-text oddities worth remembering (a source that took three retries, a checklist item with no due date and no age, an unexpectedly empty pull); empty array when the run was clean.
+- **Append-only.** History is never rewritten, reordered, or compacted. A bad line gets a correcting anomaly on the next line, not an edit.
+
+### Thursday reflection
+
+Closeout phase, Thursdays only (`America/Chicago`). Reads:
+
+- the current week's journal lines (Monday through today),
+- any `Knowledge/Lessons/` entries new since the previous reflection,
+- the current `## Tier rules` section above,
+- diffs between generated checklists and their final edited state in `Projects/daily/` day files.
+
+Looks for: recurring source failures, noisy sources (items surfaced repeatedly but never acted on), checklist reorderings Jordan made, timing drift (`durationSeconds` trending up across the week).
+
+Writes exactly one file: `Knowledge/Lessons/YYYY-MM-DD-weekly-reflection.md` -- observations with evidence citations (journal dates/phases, day-file lines) plus concrete improvement PROPOSALS (tier-rule tweaks, filter changes, skill-text edits) written as drafts for Jordan's approval.
+
+The reflection NEVER edits skills, hooks, `CLAUDE.md`, or settings itself -- the "no silent edits" anti-pattern applies with extra force to unattended runs. Approved proposals get applied later, interactively, via the normal skill-creator process.
+
 ## Verify
 
 1. **Marker exists and is coherent** (autonomous runs): `Projects/daily/runs/<date>-<phase>.json` written, valid JSON, `finishedAt` >= `startedAt`, and overall `status` consistent with the `sources` map (all ok = ok; mix = partial; none ok = failed; weekend = skipped with empty sources).
-2. **Journal line appended**: one new line in `journal.jsonl`, valid JSON, date/phase matching the marker. Append-only -- no prior line modified.
+2. **Journal line appended and schema-complete**: one new line in `journal.jsonl`, valid JSON carrying all seven fields of `## Learning loop`'s schema (`date`, `phase`, `sources`, `itemsSurfaced`, `checklistItems`, `durationSeconds`, `anomalies`); `date` and `phase` match the marker's, and `sources` is the marker's map verbatim. Append-only -- no prior line modified.
 3. **No posting tools in the autonomous path**: grep this skill's autonomous steps -- no `playwright` invocation, no Confluence write call. The status post exists only as day-file draft text until interactive approval.
 4. **Fail loud held**: every source with `failed` in the marker has a matching explicit callout in the day file section it feeds -- never an empty-but-normal-looking section.
 5. **Action + inbox conservation**: every action traces to a carry-over, a real inbox line at drain time, or a gathered assignment; drained inbox lines removed in the same step; closeout's done + moved + still-open equals what was opened.
-6. **Checklist traceability**: every checklist item traces to a gathered item (Teams/Loop/Planner assignment, AMR work, carry-over, inbox line) and carries its source citation (chat/task id or link) inline. No invented work; ordering matches `## Tier rules`.
+6. **Checklist traceability and tier order**: every checklist item traces to a gathered item (Teams/Loop/Planner assignment, AMR work, carry-over, inbox line) and carries its source citation (chat/task id or link) inline. No invented work. Ordering matches `## Tier rules` exactly -- tiers 1-5 heavy-first, and within a tier earlier due date first, then older item first; any deviation is a Verify failure, not a judgment call.
 7. **Humanizer stayed in its lane**: task titles, item text, and checklist lines byte-identical pre/post humanizer.
 8. **Inherited verifies**: triage-personal-items' checklist for its section; confluence-daily-status' drafting checks for the draft (its posting checks apply only after interactive approval).
 9. **Structured line audit**: the `kilroy-log` companion follows `log.md`'s header contract and matches the day file's counts.
 10. **Vault mirror behavior**: with `OBSIDIAN_VAULT_PATH` set and non-empty, every daily output written this phase has an identical copy under `$OBSIDIAN_VAULT_PATH/daily/`; with it unset or blank, no mirror was attempted, the marker carries the one-line `vaultMirror` skip note, and the skip did not change the marker's overall `status`.
+11. **Reflection containment** (Thursday closeout only): the reflection wrote exactly one file, `Knowledge/Lessons/<date>-weekly-reflection.md`, and nothing outside `Knowledge/Lessons/` -- no skill, hook, `CLAUDE.md`, or settings file changed. Its proposals read as drafts awaiting approval, not applied edits.
 
 ## Output template
 
@@ -194,6 +230,7 @@ Planner and Loop tasks are not reconciled here -- their systems of record own th
 - Silently zeroing a section whose source died. Marker + explicit callout, every time.
 - Inventing checklist or action items. Everything traces to a gathered item.
 - Rewriting journal.jsonl history. Append-only.
+- Letting the Thursday reflection edit a skill, hook, `CLAUDE.md`, or settings file directly. It writes proposals into `Knowledge/Lessons/` and nothing else -- approved changes land later, interactively, via skill-creator.
 - Letting an interactive session skip the Confluence approval prompt on a pending draft. Approve, edit, or skip -- explicitly.
 - Re-implementing confluence-daily-status' page/checkbox mechanics here. This skill orchestrates.
 - Reviving the retired AMR board or Graph-API Planner pull. Consolidation decision record explains why they went.
