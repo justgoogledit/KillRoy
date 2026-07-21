@@ -8,6 +8,7 @@ outputs:
   - Projects/daily/runs/<YYYY-MM-DD>-<phase>.json (status marker, one per autonomous phase run -- the login hook and Verify read these)
   - Projects/daily/runs/journal.jsonl (append-only run journal, one line per autonomous phase -- the learning loop reads this)
   - Projects/daily/inbox.md (ad-hoc capture scratch file -- appended to any time, drained into the next morning brief)
+  - mirrored copies of daily outputs under `$OBSIDIAN_VAULT_PATH/daily/` when that env var is set and non-empty (see the vault-mirror step; `Projects/daily/` stays authoritative)
   - log.md append (prose event line + structured `kilroy-log` companion line, per log.md's header contract)
 ---
 
@@ -41,12 +42,13 @@ Every autonomous phase writes `Projects/daily/runs/<YYYY-MM-DD>-<phase>.json` (c
   "sources": {
     "<source>": { "status": "ok|failed", "detail": "<string>" }
   },
+  "vaultMirror": "mirrored -- <path> | skipped -- OBSIDIAN_VAULT_PATH not set",
   "startedAt": "<ISO 8601>",
   "finishedAt": "<ISO 8601>"
 }
 ```
 
-Source keys in play per phase: `mail`, `teams`, `planner`, `loop`, `overmind` (only when a fleet pull actually ran). A `skipped` marker carries an empty `sources` map. After the marker, append the run's journal line to `Projects/daily/runs/journal.jsonl` -- schema and the Thursday reflection that consumes it live in the Learning loop section of `.scratch/kilroy-autonomy/issues/08-learning-loop.md` until ticket 08 lands it here.
+Source keys in play per phase: `mail`, `teams`, `planner`, `loop`, `overmind` (only when a fleet pull actually ran). A `skipped` marker carries an empty `sources` map. `vaultMirror` is the one-line result of the vault-mirror step (step 5) -- a mirror skip is recorded here as a note, never as a failure, and never changes the overall `status`. After the marker, append the run's journal line to `Projects/daily/runs/journal.jsonl` -- schema and the Thursday reflection that consumes it live in the Learning loop section of `.scratch/kilroy-autonomy/issues/08-learning-loop.md` until ticket 08 lands it here.
 
 ## Applies
 
@@ -76,11 +78,28 @@ Source keys in play per phase: `mail`, `teams`, `planner`, `loop`, `overmind` (o
    - Run [[Skills/triage-personal-items/SKILL|triage-personal-items]] end to end for the Personal Triage section (it reuses the pulls above where its Steps allow).
    - **Draft** the Confluence status post per [[Skills/confluence-daily-status/SKILL|confluence-daily-status]]'s drafting steps -- text only, into the day file's `## Daily Status Post` section marked `DRAFT -- awaiting approval`. Autonomous mode stops there; interactive mode presents it and, on approval, hands the post to that skill's Playwright flow.
    - Scan `log.md` + `Knowledge/Lessons/*.md` open threads + yesterday's day file Carry-over section for carry-overs. Drain `inbox.md` `## Unconsumed` lines into today's actions (`(jordan-request)` tag), removing them from the inbox -- an item lives in exactly one place.
-   - **Generate the day checklist** -- the ordered plan for Jordan's day, biggest work first, from everything gathered above. Ordering follows the `## Tier rules` section (ticket 03 lands it; until then: assigned tasks from Teams/Loop first, AMR repair/commissioning work second, everything else after, due date then age as tiebreak).
+   - **Generate the day checklist** -- the ordered plan for Jordan's day, biggest work first, from everything gathered above. Ordering follows the `## Tier rules` section below -- tiers first, then the documented tiebreaks within a tier. Every checklist item cites its source inline: the chat/task id or link it came from (a Teams message link, a Planner or Loop task id, an AMR unit id, a carry-over's day-file date, an inbox line). An item with no citable source does not go on the checklist -- that is Verify's no-invented-work check.
    - Write the day file (template below). Humanizer on signature + recommendation only. Marker (`finishedAt`, statuses) + journal line last.
 3. **Delta phase (11:00, 13:00, or "kilroy midday").** Re-pull mail/Teams/Planner/Loop deltas since the morning snapshot; append a `## Delta <HH:MM>` section: new items, cleared items, checklist adjustments -- or one line saying nothing changed. Fold any new `inbox.md` lines in, same drain rule. Marker + journal line.
-4. **Closeout phase (16:00 or "kilroy wrap the day").** Reconcile the checklist and action list: done / moved / still open (autonomous runs mark best-guess from source state, flagged `proposed --` for Jordan to confirm at next login; interactive runs confirm live). Still-open items become tomorrow's Carry-over section. Planner/Loop tasks are never reconciled here -- their systems of record own them; say so in the section. Thursday closeout additionally runs the weekly reflection (ticket 08). Marker + journal line; log.md entry per step 5. Interactive close-out also runs [[Skills/session-recap/SKILL|session-recap]] if anything reusable was learned.
-5. **Log format** (morning and closeout, both modes): prose line `## [<date>] daily | <phase> -- <n> actions, <n> carried over`, then `<!-- kilroy-log date=<date> skill=run-daily-workflow event=daily status=<ok|warn> phase=<phase> actions=<n> carried=<n> -->`. `status=warn` when the day file carries any source-failure callout or data-quality flag.
+4. **Closeout phase (16:00 or "kilroy wrap the day").** Reconcile the checklist and action list: done / moved / still open (autonomous runs mark best-guess from source state, flagged `proposed --` for Jordan to confirm at next login; interactive runs confirm live). Still-open items become tomorrow's Carry-over section. Planner/Loop tasks are never reconciled here -- their systems of record own them; say so in the section. Thursday closeout additionally runs the weekly reflection (ticket 08). Marker + journal line; log.md entry per step 6. Interactive close-out also runs [[Skills/session-recap/SKILL|session-recap]] if anything reusable was learned.
+5. **Vault mirror (every phase, after any daily-output write).** After writing or appending any daily output -- the morning day file, a delta append, the close-out section -- copy the updated file to `$OBSIDIAN_VAULT_PATH/daily/` (create the subfolder if absent). `Projects/daily/` stays authoritative; the vault copy is the one Jordan reads and annotates, and it never feeds back into this skill's state. If `OBSIDIAN_VAULT_PATH` is unset or blank (Mac dev runs won't have it), skip the mirror and record the one-line note in the phase's status marker (`"vaultMirror": "skipped -- OBSIDIAN_VAULT_PATH not set"`) -- a skip is never an error and never degrades the marker's overall `status`. Run this before finalizing the marker so the mirror result lands in it. The path comes from `.env` only -- never hardcoded.
+6. **Log format** (morning and closeout, both modes): prose line `## [<date>] daily | <phase> -- <n> actions, <n> carried over`, then `<!-- kilroy-log date=<date> skill=run-daily-workflow event=daily status=<ok|warn> phase=<phase> actions=<n> carried=<n> -->`. `status=warn` when the day file carries any source-failure callout or data-quality flag.
+
+## Tier rules
+
+The single home for the day-checklist ordering rules. The checklist generator (morning phase, step 2) reads this section, and the Thursday weekly reflection (ticket 08) points at it when proposing changes -- nothing else restates these rules.
+
+Heavy-first tiers:
+
+- **Tier 1** -- assigned tasks from Teams + Loop.
+- **Tier 2** -- AMR repairs + commissioning work.
+- **Tier 3** -- assigned tasks with no due date.
+- **Tier 4** -- mentions needing a reply.
+- **Tier 5** -- FYI / light admin (end of day).
+
+Ties within a tier: earlier due date first, then older item first (original creation time). Due date is always checked before age -- an older item with a later due date sorts after a younger item due sooner. Items without due dates fall straight through to the age tiebreak. Carry-overs and drained inbox items tier by what the item is (a carried Teams-assigned task is still Tier 1), and age counts from the item's original creation, not the day it was carried.
+
+These rules are static -- the generator never reorders on judgment -- but tunable: the Thursday reflection proposes tier-rule changes based on what Jordan actually reordered, and an approved proposal is edited into this section via the normal skill-creator process, never applied by the reflection itself.
 
 ## Verify
 
@@ -89,10 +108,11 @@ Source keys in play per phase: `mail`, `teams`, `planner`, `loop`, `overmind` (o
 3. **No posting tools in the autonomous path**: grep this skill's autonomous steps -- no `playwright` invocation, no Confluence write call. The status post exists only as day-file draft text until interactive approval.
 4. **Fail loud held**: every source with `failed` in the marker has a matching explicit callout in the day file section it feeds -- never an empty-but-normal-looking section.
 5. **Action + inbox conservation**: every action traces to a carry-over, a real inbox line at drain time, or a gathered assignment; drained inbox lines removed in the same step; closeout's done + moved + still-open equals what was opened.
-6. **Checklist traceability**: every checklist item traces to a gathered item (Teams/Loop/Planner assignment, AMR work, carry-over, inbox line). No invented work; ordering matches the tier rules.
+6. **Checklist traceability**: every checklist item traces to a gathered item (Teams/Loop/Planner assignment, AMR work, carry-over, inbox line) and carries its source citation (chat/task id or link) inline. No invented work; ordering matches `## Tier rules`.
 7. **Humanizer stayed in its lane**: task titles, item text, and checklist lines byte-identical pre/post humanizer.
 8. **Inherited verifies**: triage-personal-items' checklist for its section; confluence-daily-status' drafting checks for the draft (its posting checks apply only after interactive approval).
 9. **Structured line audit**: the `kilroy-log` companion follows `log.md`'s header contract and matches the day file's counts.
+10. **Vault mirror behavior**: with `OBSIDIAN_VAULT_PATH` set and non-empty, every daily output written this phase has an identical copy under `$OBSIDIAN_VAULT_PATH/daily/`; with it unset or blank, no mirror was attempted, the marker carries the one-line `vaultMirror` skip note, and the skip did not change the marker's overall `status`.
 
 ## Output template
 
@@ -105,7 +125,7 @@ Source keys in play per phase: `mail`, `teams`, `planner`, `loop`, `overmind` (o
 
 ## Day checklist
 
-1. [ ] <item> -- <source: Teams/Loop/Planner/AMR/carry-over> <due/age note>
+1. [ ] <item> -- <source: Teams/Loop/Planner/AMR/carry-over/inbox> (<chat/task id or link>) <due/age note>
 2. [ ] ...
 
 ## Mentions & messages

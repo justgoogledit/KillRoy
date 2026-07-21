@@ -1,0 +1,101 @@
+{
+  "_FIXTURE_WARNING": "SYNTHETIC FIXTURE DATA -- NOT PULLED FROM MAIL, TEAMS, PLANNER, LOOP, OR OVERMIND. Generated for offline dry-runs of run-daily-workflow's checklist-generator step only. Do not cite any item from this file in a real day file delivered to Jordan. See Knowledge/Sources/fixtures/README.md.",
+  "note": "Stands in for the morning phase's gathered items feeding the day-checklist generator. Covers every tier in run-daily-workflow's ## Tier rules, plus both documented tiebreaks: amr-repair-t3l2-044 and amr-commission-t3l2-051 share Tier 2 and order by due date (the earlier-due item is the younger one, proving due date is checked before age); planner-nodate-7731 and planner-nodate-7844 share Tier 3 with null due dates and order by age (older item first). expectedChecklistOrder pins the one correct output ordering.",
+  "gatheredOn": "2026-07-21",
+  "items": [
+    {
+      "id": "teams-task-4411",
+      "kind": "assigned-task",
+      "title": "Update MFS wiring doc for the B3 line",
+      "source": "teams",
+      "sourceRef": "https://teams.microsoft.example/l/message/19:synthetic-chat-id/4411",
+      "dueDate": "2026-07-21",
+      "createdAt": "2026-07-20T15:10:00-05:00",
+      "expectedTier": 1
+    },
+    {
+      "id": "loop-task-0083",
+      "kind": "assigned-task",
+      "title": "Review deployment-plan comments in Loop",
+      "source": "loop",
+      "sourceRef": "loop-task-0083",
+      "dueDate": "2026-07-22",
+      "createdAt": "2026-07-19T09:00:00-05:00",
+      "expectedTier": 1
+    },
+    {
+      "id": "amr-repair-t3l2-044",
+      "kind": "amr-repair",
+      "title": "Repair T3L2_044 lidar mount",
+      "source": "amr",
+      "sourceRef": "T3L2_044",
+      "dueDate": "2026-07-21",
+      "createdAt": "2026-07-20T08:00:00-05:00",
+      "expectedTier": 2,
+      "tiebreakNote": "Due-date pair member A -- younger than its pair partner but due earlier, so it sorts first."
+    },
+    {
+      "id": "amr-commission-t3l2-051",
+      "kind": "amr-commissioning",
+      "title": "Commissioning checks for T3L2_051",
+      "source": "amr",
+      "sourceRef": "T3L2_051",
+      "dueDate": "2026-07-23",
+      "createdAt": "2026-07-18T08:00:00-05:00",
+      "expectedTier": 2,
+      "tiebreakNote": "Due-date pair member B -- older, but due later, so it sorts second. Due date beats age."
+    },
+    {
+      "id": "planner-nodate-7731",
+      "kind": "assigned-task",
+      "title": "Draft the spare-parts request",
+      "source": "planner",
+      "sourceRef": "planner-task-7731",
+      "dueDate": null,
+      "createdAt": "2026-07-15T11:00:00-05:00",
+      "expectedTier": 3,
+      "tiebreakNote": "Age pair member A -- no due date on either, older item sorts first."
+    },
+    {
+      "id": "planner-nodate-7844",
+      "kind": "assigned-task",
+      "title": "Collect vendor RMA numbers",
+      "source": "planner",
+      "sourceRef": "planner-task-7844",
+      "dueDate": null,
+      "createdAt": "2026-07-19T13:30:00-05:00",
+      "expectedTier": 3,
+      "tiebreakNote": "Age pair member B -- newer, sorts second."
+    },
+    {
+      "id": "teams-mention-9120",
+      "kind": "mention-needs-reply",
+      "title": "@Jordan can you confirm the 250 sign-off owner for B3?",
+      "source": "teams",
+      "sourceRef": "https://teams.microsoft.example/l/message/19:synthetic-chat-id/9120",
+      "dueDate": null,
+      "createdAt": "2026-07-21T07:42:00-05:00",
+      "expectedTier": 4
+    },
+    {
+      "id": "mail-fyi-5501",
+      "kind": "fyi",
+      "title": "FYI: facilities maintenance window Saturday",
+      "source": "mail",
+      "sourceRef": "mail-message-5501",
+      "dueDate": null,
+      "createdAt": "2026-07-21T06:05:00-05:00",
+      "expectedTier": 5
+    }
+  ],
+  "expectedChecklistOrder": [
+    "teams-task-4411",
+    "loop-task-0083",
+    "amr-repair-t3l2-044",
+    "amr-commission-t3l2-051",
+    "planner-nodate-7731",
+    "planner-nodate-7844",
+    "teams-mention-9120",
+    "mail-fyi-5501"
+  ]
+}
