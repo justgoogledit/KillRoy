@@ -16,7 +16,7 @@ test('parses the real .env.example, preserving the unquoted-space CSV path', () 
   // The value this parser exists for: an unquoted space that breaks naive `source`.
   assert.equal(
     env.MASTER_TRACKER_CSV_PATH,
-    'C:/Users/jocasias/OneDrive - Tesla/AMR TRACKER/master-tracker.csv',
+    'C:\\Users\\jocasias\\OneDrive - Tesla\\Sonic AMR Master Tracker.csv',
   );
   // Comment lines and blank lines never become keys.
   assert.ok(!Object.keys(env).some((k) => k.startsWith('#')));

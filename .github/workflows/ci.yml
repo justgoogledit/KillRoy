@@ -1,0 +1,37 @@
+name: CI
+
+permissions:
+  contents: read
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "mcp-server/**"
+      - ".github/workflows/ci.yml"
+  pull_request:
+    paths:
+      - "mcp-server/**"
+      - ".github/workflows/ci.yml"
+
+jobs:
+  test:
+    name: Test mcp-server
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mcp-server
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: mcp-server/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm test
