@@ -2,7 +2,7 @@
 title: Overmind Fleet Name Reference (GFTX AMR)
 author: Jordan Casias (cached from Overmind deployments/global_values.yaml)
 type: reference
-date_synthesized: 2026-07-17
+date_synthesized: 2026-07-20
 tags: [amr, overmind, fleets, gftx, commissioning]
 ---
 
@@ -16,12 +16,12 @@ The four GFTX AMR production lines, per the design doc ([[docs/superpowers/specs
 
 | Line | Fleet id | Status |
 |---|---|---|
-| Cybercab 2M B3 | `gftx-cybercab-2m-b3-agv` | UNVERIFIED -- from design doc, not confirmed against a live global_values.yaml pull |
-| Kyle 2R Seats | fleet id: unverified, refresh on corp network | UNVERIFIED |
-| CT Door 1M | fleet id: unverified, refresh on corp network | UNVERIFIED |
-| Cybercab 2F B3 | fleet id: unverified, refresh on corp network | UNVERIFIED |
+| Cybercab 2M B3 | `gftx-cybercab-2m-b3-agv` | CONFIRMED -- Jordan supplied the live URL directly, 2026-07-20 |
+| Cybercab 2F B3 | `gftx-cybercab-2f-b3-agv` | CONFIRMED -- Jordan supplied the live URL directly, 2026-07-20 |
+| Kyle 2R Seats | `gftx-kyle2rseats-agv` | CONFIRMED -- Jordan supplied the live URL directly, 2026-07-20 |
+| CT Door 1M | `gftx-ctdoor-1m-agv` | CONFIRMED -- Jordan supplied the live URL directly, 2026-07-20 |
 
-Do not guess the missing fleet ids from the naming pattern. `gftx-cybercab-2m-b3-agv` suggests a `gftx-<line>-agv` convention, but a wrong fleet id substituted into `$OVERMIND_BASE_URL_TEMPLATE` fails loud at best and hits the wrong fleet at worst. Unverified means unusable for handoffs.
+Base URL pattern confirmed as `https://<fleet-id>.robots.tesla.com/` -- this is what `OVERMIND_BASE_URL_TEMPLATE` is set to (`https://{fleet}.robots.tesla.com/`) in `.env.example`. Note Kyle 2R Seats and CT Door 1M don't follow the `gftx-<line>-b3-agv` shape the cybercab lines do (`kyle2rseats` has no separator, `ctdoor-1m` has no `b3`) -- this was NOT a naming-pattern guess, it came from the URLs Jordan supplied directly. This wasn't confirmed by pulling `deployments/global_values.yaml` -- that pull should still happen on corp network to double check these against the source of truth, but they no longer need treating as UNVERIFIED/unusable.
 
 ## Refresh procedure
 

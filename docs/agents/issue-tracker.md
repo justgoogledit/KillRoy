@@ -1,26 +1,14 @@
 # Issue tracker: GitHub
 
-Issues and PRDs for this repo live as GitHub issues on `justgoogledit/KillRoy`. Use the `gh` CLI
-for all operations.
+Issues and PRDs for this repo live as GitHub issues on `github.tesla.com/jocasias/Kilroy`. Use the
+`gh` CLI for all operations; it infers the repo from `git remote -v`.
 
-> **Repo will change.** `justgoogledit/KillRoy` is the personal-account repo used to build this
-> scaffolding. Once the build is finished here, this repo gets cloned into Jordan's enterprise
-> account, and the real working repo will live there under a different owner/name. Everything
-> below still applies as-is -- `gh` infers the repo from `git remote -v`, so no edits are needed
-> here once the clone happens. Only the literal string `justgoogledit/KillRoy` above (and in
-> `CLAUDE.md`'s `## Agent skills` section) is stale after the move; update both in one pass once
-> the enterprise clone exists and its remote is known.
-
-> **Sandbox-specific: some remote Claude Code sessions restrict `gh`'s GraphQL calls.**
-> Discovered 2026-07-18 in this specific remote session: the egress proxy only allows a pinned
-> set of PR-review GraphQL operations. `gh repo view`, `gh auth status`, `gh issue list`, `gh
-> issue create`, and most other high-level `gh issue`/`gh pr` subcommands use GraphQL internally
-> and get rejected with `HTTP 403: This GraphQL query is not enabled for this session`. This is
-> scoped to that kind of sandboxed session, not a general `gh` limitation -- plain REST calls
-> work fine (`gh api repos/<owner>/<repo>/issues`, etc.), and the proxy's own error message points
-> at this as the workaround. On a real machine (the eventual work-account setup), the commands
-> below should work exactly as documented, unrestricted -- this note only matters if a future
-> session hits the same 403. If it does, use the REST form instead, e.g.:
+> **Sandbox-specific note, no longer applicable.** The 2026-07-18 build sessions ran in a remote
+> sandbox whose egress proxy restricted `gh`'s GraphQL calls (`gh issue list`, `gh issue create`,
+> etc. failed with `HTTP 403`; plain REST via `gh api` worked around it). Now that this repo lives
+> on `github.tesla.com` and Kilroy runs from Jordan's own work computer, that restriction doesn't
+> apply -- the commands below work as documented, unrestricted. Kept only as a pointer in case a
+> future remote/sandboxed session hits the same 403: fall back to
 > `gh api repos/<owner>/<repo>/issues -f title="..." -f body="..." -f 'labels[]=ready-for-agent'`
 > in place of `gh issue create`, or `gh api repos/<owner>/<repo>/issues -X GET` in place of
 > `gh issue list`.
