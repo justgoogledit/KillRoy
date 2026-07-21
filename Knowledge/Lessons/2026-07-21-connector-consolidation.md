@@ -26,7 +26,7 @@ Execution record for the plan approved 2026-07-20 (decision record: [[Knowledge/
 ## Verification state
 
 - `mcp-server` lib tests (env, overmind): **15/15 pass on this Mac**.
-- `mcp-server/test/server.test.js` (spawns the stdio server as a child process): **UNVERIFIED on this Mac** -- the sandboxed shell hangs the spawned-child stdio handshake indefinitely; every attempted run sat on the first spawn. Jordan directed: scaffolding only on the Mac, all tests run on the Windows work PC (bootstrap step 7 / green-checklist item 1).
+- `mcp-server/test/server.test.js` (spawns the stdio server as a child process): hangs in the Mac sandbox (spawned-child stdio handshake never completes there), but **verified green on GitHub Actions CI** the same day -- run 29864442265 on the post-consolidation push: 20/20 tests pass, 0 fail, full suite including all 5 server tests. The Mac hang is environmental, not a code defect. Work-PC bootstrap step 8 still re-runs the suite locally as its own check.
 - Grep sweep: no live references to `amr_hub_get_units` / `master_tracker_get_rows` / `planner_get_tasks` / `GRAPH_API_*` / `PLANNER_PLAN_IDS` / `arriving-amr-progress` remain outside `Knowledge/Lessons/` history, `log.md` history, the design doc (marked as predating the consolidation), and explicit retirement notes.
 
 ## Open threads
