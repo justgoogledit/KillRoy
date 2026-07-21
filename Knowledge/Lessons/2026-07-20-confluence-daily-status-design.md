@@ -7,6 +7,23 @@ tags: [lesson, personal-assistant, confluence, playwright, mcp-setup]
 
 # Confluence daily-status: design, scaffold, and machine-move checklist
 
+## Resume here (fresh context window)
+
+State as of end of session: design approved, skill scaffolded, docs updated, all committed. Nothing
+left to design -- everything remaining is machine setup and verification, tracked as the checklist
+under "Open threads" below.
+
+- Commits: `8a7b1e3` (pre-existing fleet-id/issue-tracker updates, unrelated to this feature) and
+  `fea090a` (the confluence-daily-status feature itself -- skill, reference doc, `.mcp.json`,
+  `.env.example`, and updates to `run-daily-workflow`/`CLAUDE.md`/`README.md`/`Skills.md`).
+- Read this whole file before doing anything else in a new session -- it's the complete decision
+  trail, not just a summary.
+- Start with the first unchecked item under "Open threads" -- they're in dependency order (Node
+  install before `npm install`, `.env` before `kilroy check`, etc.).
+- If `.mcp.json` looks different from what this lesson describes, trust the file -- it's been
+  hand-corrected at least once since (see the `--browser` vs `--channel` note below), and the
+  reference docs may lag it if that keeps happening.
+
 ## What we did
 
 - Ran `check-connectors` cold -- found `.env` missing entirely, correctly stopped everything else per its fail-loud rule.
@@ -38,7 +55,7 @@ tags: [lesson, personal-assistant, confluence, playwright, mcp-setup]
 
 ## Open threads
 
-- [ ] Verify the real `@playwright/mcp` package name and CLI flags (`--user-data-dir`, `--channel`, headless control) -- WebSearch failed in this session (VPC-restricted). `.mcp.json`'s `playwright` entry is unverified until this is checked on a network where lookups work, or by installing and reading `--help` directly.
+- [ ] Finish verifying `@playwright/mcp`'s CLI flags. Corrected mid-session (by Jordan or a linter, not by me): `.mcp.json` now uses `--browser` instead of the `--channel` I originally guessed -- do not revert this, it looks like a real fix. Still unconfirmed: the package name itself (`@playwright/mcp@latest`) and the `--user-data-dir` flag. WebSearch failed in this session (VPC-restricted) so I could not verify either. Confirm both on a network where lookups resolve, or by installing the package and reading its own `--help`.
 - [ ] Install Node.js 18+ on the work machine -- `node`/`npx` were confirmed absent from PATH this session, blocking both `mcp-server/` and the new `playwright` MCP server.
 - [ ] `cd mcp-server && npm install` (kilroy-connectors dependency, one-time).
 - [ ] `cp .env.example .env` and fill in every real value -- `.env` does not exist yet at all (confirmed by this session's `check-connectors` run: the very first check failed at the missing-file step). This includes the two new `PLAYWRIGHT_*` vars alongside the four original AMR/Planner ones.

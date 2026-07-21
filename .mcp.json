@@ -11,7 +11,7 @@
         "@playwright/mcp@latest",
         "--user-data-dir",
         "${PLAYWRIGHT_USER_DATA_DIR}",
-        "--channel",
+        "--browser",
         "${PLAYWRIGHT_BROWSER_CHANNEL}"
       ]
     }
