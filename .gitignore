@@ -12,3 +12,4 @@
 # mattpocock/skills clone -- general-purpose engineering skills, not part of Kilroy's own
 # tracked tree (see CLAUDE.md's "Agent skills" section). Own nested git repo; never commit it.
 /skills/
+.DS_Store
